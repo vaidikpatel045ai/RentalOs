@@ -1,0 +1,1270 @@
+// Bridal Rental OS — full data model.
+// Covers every entity from the product spec (section 28) plus the
+// currency/locale fields needed for future US expansion (see plan's
+// "US-Readiness" section) — nothing here is UAE-hardcoded at the schema level.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────────────────
+
+enum Role {
+  OWNER
+  MANAGER
+  SALES
+  STYLIST
+  TAILOR
+  CLEANER
+  DELIVERY
+  CUSTOMER
+}
+
+enum Language {
+  EN
+  AR
+  HI
+  UR
+}
+
+enum GarmentCategory {
+  BRIDAL_GOWN
+  RECEPTION_DRESS
+  BRIDESMAID
+  EVENING_GOWN
+  ABAYA
+  VEIL
+  JEWELLERY
+  SHOES
+  BELT
+  GLOVES
+  OVERSKIRT
+  ACCESSORIES
+  GROOM_FORMALWEAR
+}
+
+enum GarmentStatus {
+  AVAILABLE
+  RESERVED
+  BOOKED
+  AWAITING_FITTING
+  IN_FITTING
+  ALTERATION_REQUIRED
+  WITH_TAILOR
+  READY_FOR_FITTING
+  FINAL_FITTING
+  READY_FOR_PICKUP
+  OUT_FOR_DELIVERY
+  WITH_CUSTOMER
+  RETURNED
+  DAMAGE_INSPECTION
+  CLEANING_REQUIRED
+  CLEANING
+  QUALITY_CHECK
+  REPAIR_REQUIRED
+  UNDER_REPAIR
+  READY_TO_RENT
+  OUT_OF_SERVICE
+  SOLD
+  LOST
+  DAMAGED
+  ARCHIVED
+}
+
+enum AvailabilityRisk {
+  SAFE
+  TIGHT
+  UNSAFE
+}
+
+enum BookingStatus {
+  DRAFT
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  REFUNDED
+  OVERDUE
+}
+
+enum DeliveryMethod {
+  STORE_PICKUP
+  STORE_RETURN
+  HOME_DELIVERY
+  HOME_PICKUP
+  COURIER
+  EXPRESS
+}
+
+enum AppointmentType {
+  NEW_CONSULTATION
+  DRESS_SELECTION
+  FITTING
+  ALTERATION_FITTING
+  FINAL_FITTING
+  PICKUP
+  RETURN
+  HOME_FITTING
+  STYLING
+  CUSTOMER_SERVICE
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+  RESCHEDULED
+}
+
+enum TailoringStatus {
+  ASSIGNED
+  ACCEPTED
+  IN_PROGRESS
+  READY_FOR_FITTING
+  FITTING_FEEDBACK
+  REVISION_REQUIRED
+  COMPLETED
+}
+
+enum CleaningType {
+  DRY_CLEAN
+  STEAM
+  HAND_WASH
+  SPOT_CLEAN
+  STAIN_REMOVAL
+  DELICATE_CARE
+  ODOR_TREATMENT
+  EMERGENCY
+}
+
+enum CleaningStatus {
+  RECEIVED
+  INSPECTION
+  CLEANING
+  DRYING
+  FINISHING
+  QUALITY_CHECK
+  READY
+  FAILED_QC
+  RE_CLEAN
+  COMPLETED
+}
+
+enum RepairStatus {
+  REQUIRED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum ConditionReportType {
+  PRE_RENTAL
+  POST_RENTAL
+  PERIODIC
+}
+
+enum DamageChargeStatus {
+  PENDING
+  APPROVED
+  WAIVED
+  CHARGED
+}
+
+enum DeliveryStatus {
+  ASSIGNED
+  PICKED_UP
+  IN_TRANSIT
+  DELIVERED
+  FAILED
+  RESCHEDULED
+  RETURNED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum PaymentType {
+  RENTAL_FEE
+  DEPOSIT
+  ADVANCE
+  BALANCE
+  DELIVERY_FEE
+  ALTERATION_FEE
+  CLEANING_FEE
+  LATE_FEE
+  DAMAGE_CHARGE
+  TAX
+  REFUND
+  DISCOUNT
+}
+
+enum TransactionMethod {
+  CASH
+  CARD
+  BANK_TRANSFER
+  ONLINE
+  CHEQUE
+  OTHER
+}
+
+enum DepositStatus {
+  HELD
+  REFUNDED
+  PARTIALLY_REFUNDED
+  FORFEITED
+}
+
+enum DocumentType {
+  ID
+  CONTRACT
+  RECEIPT
+  CONSENT
+  OTHER
+}
+
+enum MessageChannel {
+  WHATSAPP
+  EMAIL
+  SMS
+}
+
+enum MessageDirection {
+  OUTBOUND
+  INBOUND
+}
+
+enum MessageStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+  READ
+}
+
+enum StaffTaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum TransferStatus {
+  REQUESTED
+  APPROVED
+  IN_TRANSIT
+  RECEIVED
+  REJECTED
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// BRANCH / SETTINGS
+// ─────────────────────────────────────────────────────────────────────────
+
+/// A store location. Currency/locale/tax live here (not hardcoded) so a
+/// future US branch is just a new row, never a schema or logic change.
+model Branch {
+  id           String   @id @default(cuid())
+  name         String
+  code         String   @unique // e.g. "DXB", "AUH", "SHJ"
+  country      String   @default("AE") // ISO 3166-1 alpha-2
+  currency     String   @default("AED") // ISO 4217
+  timezone     String   @default("Asia/Dubai")
+  locale       String   @default("en-AE")
+  taxLabel     String   @default("VAT")
+  taxRate      Decimal  @default(5) @db.Decimal(5, 2) // percent
+
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  stateOrRegion String? // emirate today, US state later — generic, not an enum
+  postalCode   String?
+
+  phone        String?
+  email        String?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  settings         BranchSettings?
+  users            User[]
+  customers        Customer[]
+  garments         Garment[]
+  bookings         Booking[]
+  appointments     Appointment[]
+  packages         Package[]
+  transfersFrom    InventoryTransfer[] @relation("TransferFromBranch")
+  transfersTo      InventoryTransfer[] @relation("TransferToBranch")
+  messageTemplates MessageTemplate[]
+
+  @@map("branches")
+}
+
+/// Operational tuning knobs per branch — powers the availability engine.
+model BranchSettings {
+  id                     String  @id @default(cuid())
+  branchId               String  @unique
+  branch                 Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  inspectionBufferHours  Int     @default(2)
+  cleaningBufferHours    Int     @default(8)
+  repairBufferHours      Int     @default(6)
+  qualityCheckBufferHours Int    @default(1)
+  /// If free time before the next booking is below this, flag TIGHT.
+  tightThresholdHours    Int     @default(24)
+
+  whatsappEnabled        Boolean @default(false)
+  emailEnabled           Boolean @default(true)
+  smsEnabled              Boolean @default(false)
+
+  updatedAt              DateTime @updatedAt
+
+  @@map("branch_settings")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// USERS / STAFF / AUTH
+// ─────────────────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  phone        String? // E.164
+  role         Role
+  branchId     String?
+  branch       Branch?  @relation(fields: [branchId], references: [id])
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  staffProfile      StaffProfile?
+  customerProfile   Customer?           @relation("CustomerLoginAccount")
+
+  assignedBookings       Booking[]           @relation("BookingAssignedStaff")
+  assignedAppointments   Appointment[]       @relation("AppointmentAssignedStaff")
+  assignedTailoringJobs  TailoringJob[]      @relation("TailoringAssignee")
+  assignedCleaningJobs   GarmentCleaningJob[] @relation("CleaningAssignee")
+  assignedDeliveryJobs   DeliveryJob[]       @relation("DeliveryAssignee")
+  assignedStaffTasks     StaffTask[]         @relation("StaffTaskAssignee")
+
+  garmentStatusChanges   GarmentStatusHistory[] @relation("GarmentStatusChangedBy")
+  garmentLocationMoves   GarmentLocation[]      @relation("GarmentLocationMovedBy")
+  conditionReportsFiled  GarmentConditionReport[] @relation("ConditionReportInspector")
+  conditionReportsApproved GarmentConditionReport[] @relation("ConditionReportApprover")
+  damageChargesApproved  DamageCharge[]         @relation("DamageChargeApprover")
+  repairsAssigned        GarmentRepair[]        @relation("RepairAssignee")
+
+  paymentsReceived       Payment[]              @relation("PaymentReceivedBy")
+  refundsProcessed       Refund[]               @relation("RefundProcessedBy")
+
+  measurementsTaken      CustomerMeasurement[]  @relation("MeasurementTakenBy")
+  tailoringNotesAuthored TailoringNote[]        @relation("TailoringNoteAuthor")
+  documentsUploaded      Document[]             @relation("DocumentUploadedBy")
+  messagesSent           Message[]              @relation("MessageSentBy")
+  notifications          Notification[]
+  auditLogs              AuditLog[]
+  transfersRequested     InventoryTransfer[]    @relation("TransferRequestedBy")
+  transfersApproved      InventoryTransfer[]    @relation("TransferApprovedBy")
+
+  @@index([role])
+  @@index([branchId])
+  @@map("users")
+}
+
+model StaffProfile {
+  id           String    @id @default(cuid())
+  userId       String    @unique
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  employeeCode String    @unique
+  title        String?
+  department   String?
+  hireDate     DateTime?
+  skills       String[]  @default([])
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@map("staff_profiles")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// CUSTOMERS
+// ─────────────────────────────────────────────────────────────────────────
+
+model Customer {
+  id                String    @id @default(cuid())
+  branchId          String
+  branch            Branch    @relation(fields: [branchId], references: [id])
+
+  /// Set only if this customer has portal login access.
+  userId            String?   @unique
+  user              User?     @relation("CustomerLoginAccount", fields: [userId], references: [id])
+
+  firstName         String
+  lastName          String
+  phone             String // E.164
+  whatsapp          String?
+  email             String?
+  nationality        String?
+  preferredLanguage  Language @default(EN)
+
+  weddingDate        DateTime?
+  weddingVenue        String?
+  eventType           String?
+
+  favoriteDesigners   String[] @default([])
+  stylePreferences    String?
+  notes               String?
+
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  measurements       CustomerMeasurement[]
+  bookings           Booking[]
+  appointments       Appointment[]
+  fittingSessions    FittingSession[]
+  documents          Document[]
+  messages           Message[]
+  tailoringJobs      TailoringJob[]
+
+  @@index([branchId])
+  @@index([phone])
+  @@index([lastName, firstName])
+  @@map("customers")
+}
+
+model CustomerMeasurement {
+  id              String   @id @default(cuid())
+  customerId      String
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  version         Int
+  isLatest        Boolean  @default(true)
+  verified        Boolean  @default(false)
+  unit            String   @default("cm") // "cm" | "in"
+
+  bust            Decimal? @db.Decimal(6, 2)
+  underbust       Decimal? @db.Decimal(6, 2)
+  waist           Decimal? @db.Decimal(6, 2)
+  hip             Decimal? @db.Decimal(6, 2)
+  shoulder        Decimal? @db.Decimal(6, 2)
+  armhole         Decimal? @db.Decimal(6, 2)
+  sleeve          Decimal? @db.Decimal(6, 2)
+  bicep           Decimal? @db.Decimal(6, 2)
+  blouseLength    Decimal? @db.Decimal(6, 2)
+  frontLength     Decimal? @db.Decimal(6, 2)
+  backLength      Decimal? @db.Decimal(6, 2)
+  hollowToHem     Decimal? @db.Decimal(6, 2)
+  height          Decimal? @db.Decimal(6, 2)
+  heelHeight      Decimal? @db.Decimal(6, 2)
+  lehengaWaist    Decimal? @db.Decimal(6, 2)
+  lehengaLength   Decimal? @db.Decimal(6, 2)
+  trainLength     Decimal? @db.Decimal(6, 2)
+  customFields    Json?
+
+  takenByUserId   String?
+  takenBy         User?    @relation("MeasurementTakenBy", fields: [takenByUserId], references: [id])
+  takenAt         DateTime @default(now())
+
+  @@index([customerId, isLatest])
+  @@map("customer_measurements")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// GARMENTS / INVENTORY
+// ─────────────────────────────────────────────────────────────────────────
+
+model Garment {
+  id                 String          @id @default(cuid())
+  sku                String          @unique // e.g. "BR-102"
+  branchId           String
+  branch             Branch          @relation(fields: [branchId], references: [id])
+
+  name               String
+  category           GarmentCategory
+  designer           String?
+  collection         String?
+  brand              String?
+  size               String?
+  sizeEU             String?
+  sizeUS             String?
+  color              String?
+  fabric             String?
+  style              String?
+  season             String?
+  year               Int?
+
+  rentalPrice        Decimal @default(0) @db.Decimal(12, 2)
+  salePrice          Decimal? @db.Decimal(12, 2)
+  securityDeposit     Decimal @default(0) @db.Decimal(12, 2)
+  purchaseCost        Decimal @default(0) @db.Decimal(12, 2)
+  replacementValue    Decimal @default(0) @db.Decimal(12, 2)
+
+  currentStatus       GarmentStatus @default(AVAILABLE)
+  conditionScore      Decimal @default(10) @db.Decimal(3, 1) // out of 10
+  currentLocationLabel String @default("Showroom Floor")
+  currentHolderUserId String?
+
+  /// Composite listing: e.g. a gown that comes with a veil/belt/overskirt.
+  /// Each item stays independently trackable inventory.
+  parentGarmentId     String?
+  parentGarment       Garment? @relation("GarmentComponents", fields: [parentGarmentId], references: [id])
+  components          Garment[] @relation("GarmentComponents")
+
+  qrCodeValue         String  @unique // encoded value the QR points to (e.g. deep link)
+  notes                String?
+
+  rentalCount          Int     @default(0)
+  totalRentalRevenue   Decimal @default(0) @db.Decimal(12, 2)
+  cleaningCostTotal    Decimal @default(0) @db.Decimal(12, 2)
+  repairCostTotal      Decimal @default(0) @db.Decimal(12, 2)
+  alterationCostTotal  Decimal @default(0) @db.Decimal(12, 2)
+
+  isActive             Boolean @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  images               GarmentImage[]
+  statusHistory        GarmentStatusHistory[]
+  locationHistory       GarmentLocation[]
+  conditionReports      GarmentConditionReport[]
+  repairs               GarmentRepair[]
+  cleaningJobs           GarmentCleaningJob[]
+  tailoringJobs          TailoringJob[]
+  bookingItems            BookingItem[]
+  fittingSessionGarments  FittingSessionGarment[]
+  packageItems             PackageItem[]
+  transfers                InventoryTransfer[]
+
+  @@index([branchId])
+  @@index([category])
+  @@index([currentStatus])
+  @@map("garments")
+}
+
+model GarmentImage {
+  id         String   @id @default(cuid())
+  garmentId  String
+  garment    Garment  @relation(fields: [garmentId], references: [id], onDelete: Cascade)
+  url        String
+  caption    String?
+  isPrimary  Boolean  @default(false)
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@index([garmentId])
+  @@map("garment_images")
+}
+
+/// Append-only audit trail of every status transition (spec section 2/26).
+model GarmentStatusHistory {
+  id              String        @id @default(cuid())
+  garmentId       String
+  garment         Garment       @relation(fields: [garmentId], references: [id], onDelete: Cascade)
+  fromStatus      GarmentStatus?
+  toStatus        GarmentStatus
+  changedByUserId String?
+  changedBy       User?         @relation("GarmentStatusChangedBy", fields: [changedByUserId], references: [id])
+  changedByRole   Role?
+  notes           String?
+  createdAt       DateTime      @default(now())
+
+  @@index([garmentId, createdAt])
+  @@map("garment_status_history")
+}
+
+model GarmentLocation {
+  id            String   @id @default(cuid())
+  garmentId     String
+  garment       Garment  @relation(fields: [garmentId], references: [id], onDelete: Cascade)
+  locationLabel String
+  movedByUserId String?
+  movedBy       User?    @relation("GarmentLocationMovedBy", fields: [movedByUserId], references: [id])
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  @@index([garmentId, createdAt])
+  @@map("garment_locations")
+}
+
+model GarmentConditionReport {
+  id                  String              @id @default(cuid())
+  garmentId           String
+  garment             Garment             @relation(fields: [garmentId], references: [id], onDelete: Cascade)
+  bookingId           String?
+  booking             Booking?            @relation(fields: [bookingId], references: [id])
+  reportType          ConditionReportType
+
+  conditionScore      Decimal             @db.Decimal(3, 1)
+  damageCategories    String[]            @default([]) // stains, tears, missing_component, broken_zip, embroidery_damage, odor, wear, other
+  description         String?
+  photos              String[]            @default([])
+
+  estimatedCost       Decimal             @default(0) @db.Decimal(12, 2)
+
+  inspectedByUserId   String?
+  inspectedBy         User?               @relation("ConditionReportInspector", fields: [inspectedByUserId], references: [id])
+  approvedByUserId    String?
+  approvedBy          User?               @relation("ConditionReportApprover", fields: [approvedByUserId], references: [id])
+  approvedAmount       Decimal?           @db.Decimal(12, 2)
+
+  createdAt            DateTime           @default(now())
+
+  repairs               GarmentRepair[]
+  damageCharges          DamageCharge[]
+
+  @@index([garmentId])
+  @@index([bookingId])
+  @@map("garment_condition_reports")
+}
+
+model GarmentRepair {
+  id                  String                  @id @default(cuid())
+  garmentId           String
+  garment             Garment                 @relation(fields: [garmentId], references: [id], onDelete: Cascade)
+  conditionReportId   String?
+  conditionReport     GarmentConditionReport? @relation(fields: [conditionReportId], references: [id])
+
+  description         String
+  status              RepairStatus            @default(REQUIRED)
+  cost                Decimal                 @default(0) @db.Decimal(12, 2)
+
+  assignedToUserId    String?
+  assignedTo          User?                   @relation("RepairAssignee", fields: [assignedToUserId], references: [id])
+
+  startedAt           DateTime?
+  completedAt         DateTime?
+  notes               String?
+  createdAt           DateTime                @default(now())
+
+  @@index([garmentId])
+  @@map("garment_repairs")
+}
+
+model GarmentCleaningJob {
+  id                String          @id @default(cuid())
+  garmentId         String
+  garment           Garment         @relation(fields: [garmentId], references: [id], onDelete: Cascade)
+  bookingId         String?
+  booking           Booking?        @relation(fields: [bookingId], references: [id])
+
+  cleaningType      CleaningType
+  status            CleaningStatus  @default(RECEIVED)
+  priority          Priority        @default(MEDIUM)
+
+  stainNotes        String?
+  instructions      String?
+
+  assignedToUserId  String?
+  assignedTo        User?           @relation("CleaningAssignee", fields: [assignedToUserId], references: [id])
+
+  dueAt             DateTime?
+  startedAt         DateTime?
+  completedAt       DateTime?
+  cost              Decimal         @default(0) @db.Decimal(12, 2)
+
+  beforePhotos      String[]        @default([])
+  afterPhotos       String[]        @default([])
+  notes             String?
+
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([garmentId])
+  @@index([status])
+  @@index([assignedToUserId])
+  @@map("garment_cleaning_jobs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// TAILORING
+// ─────────────────────────────────────────────────────────────────────────
+
+model TailoringJob {
+  id                 String          @id @default(cuid())
+  garmentId          String
+  garment            Garment         @relation(fields: [garmentId], references: [id], onDelete: Cascade)
+  bookingId          String?
+  booking            Booking?        @relation(fields: [bookingId], references: [id])
+  customerId         String?
+  customer           Customer?       @relation(fields: [customerId], references: [id])
+
+  assignedToUserId   String?
+  assignedTo         User?           @relation("TailoringAssignee", fields: [assignedToUserId], references: [id])
+
+  status             TailoringStatus @default(ASSIGNED)
+  priority           Priority        @default(MEDIUM)
+
+  /// e.g. { "hem": "-1.5in", "bust": "+0.5in", "straps": "-0.5in" }
+  instructions       Json?
+  beforeMeasurements Json?
+  afterMeasurements  Json?
+
+  dueAt              DateTime?
+  startedAt          DateTime?
+  completedAt        DateTime?
+  notes              String?
+
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  tailoringNotes     TailoringNote[]
+
+  @@index([garmentId])
+  @@index([status])
+  @@index([assignedToUserId])
+  @@map("tailoring_jobs")
+}
+
+model TailoringNote {
+  id             String       @id @default(cuid())
+  tailoringJobId String
+  tailoringJob   TailoringJob @relation(fields: [tailoringJobId], references: [id], onDelete: Cascade)
+  authorUserId   String?
+  author         User?        @relation("TailoringNoteAuthor", fields: [authorUserId], references: [id])
+  note           String
+  photos         String[]     @default([])
+  createdAt      DateTime     @default(now())
+
+  @@map("tailoring_notes")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// APPOINTMENTS / FITTINGS
+// ─────────────────────────────────────────────────────────────────────────
+
+model Appointment {
+  id               String            @id @default(cuid())
+  branchId         String
+  branch           Branch            @relation(fields: [branchId], references: [id])
+  customerId       String
+  customer         Customer          @relation(fields: [customerId], references: [id])
+  bookingId        String?
+  booking          Booking?          @relation(fields: [bookingId], references: [id])
+
+  type             AppointmentType
+  status           AppointmentStatus @default(SCHEDULED)
+
+  scheduledAt      DateTime
+  durationMinutes  Int               @default(60)
+  room             String?
+
+  assignedStaffId  String?
+  assignedStaff    User?             @relation("AppointmentAssignedStaff", fields: [assignedStaffId], references: [id])
+
+  notes            String?
+  reminderSentAt   DateTime?
+
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  fittingSession   FittingSession?
+
+  @@index([branchId, scheduledAt])
+  @@index([customerId])
+  @@index([assignedStaffId])
+  @@map("appointments")
+}
+
+model FittingSession {
+  id                     String   @id @default(cuid())
+  appointmentId          String   @unique
+  appointment            Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  customerId             String
+  customer               Customer @relation(fields: [customerId], references: [id])
+
+  feedback               String?
+  stylistNotes            String?
+  customerComments         String?
+  finalSelectionGarmentId  String?
+  photos                  String[] @default([])
+
+  createdAt                DateTime @default(now())
+
+  garmentsTried            FittingSessionGarment[]
+
+  @@map("fitting_sessions")
+}
+
+model FittingSessionGarment {
+  id                String          @id @default(cuid())
+  fittingSessionId  String
+  fittingSession    FittingSession  @relation(fields: [fittingSessionId], references: [id], onDelete: Cascade)
+  garmentId         String
+  garment           Garment         @relation(fields: [garmentId], references: [id])
+  feedback          String?
+
+  @@index([fittingSessionId])
+  @@map("fitting_session_garments")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// BOOKINGS
+// ─────────────────────────────────────────────────────────────────────────
+
+model Booking {
+  id               String         @id @default(cuid())
+  bookingNumber    String         @unique // e.g. "BK-2026-0001"
+  branchId         String
+  branch           Branch         @relation(fields: [branchId], references: [id])
+  customerId       String
+  customer         Customer       @relation(fields: [customerId], references: [id])
+
+  status           BookingStatus  @default(DRAFT)
+  paymentStatus    PaymentStatus  @default(UNPAID)
+
+  rentalStart      DateTime
+  rentalEnd        DateTime
+  weddingDate      DateTime?
+  pickupDate       DateTime?
+  returnDate       DateTime?
+  trialDate        DateTime?
+  fittingDate      DateTime?
+
+  deliveryMethod   DeliveryMethod @default(STORE_PICKUP)
+  pickupLocation   String?
+  returnMethod     DeliveryMethod @default(STORE_RETURN)
+
+  rentalFee        Decimal        @default(0) @db.Decimal(12, 2)
+  discount         Decimal        @default(0) @db.Decimal(12, 2)
+  taxAmount        Decimal        @default(0) @db.Decimal(12, 2)
+  depositAmount    Decimal        @default(0) @db.Decimal(12, 2)
+  deliveryFee      Decimal        @default(0) @db.Decimal(12, 2)
+  totalAmount      Decimal        @default(0) @db.Decimal(12, 2)
+  paidAmount       Decimal        @default(0) @db.Decimal(12, 2)
+  balanceDue       Decimal        @default(0) @db.Decimal(12, 2)
+
+  assignedStaffId  String?
+  assignedStaff    User?          @relation("BookingAssignedStaff", fields: [assignedStaffId], references: [id])
+
+  notes            String?
+
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  items              BookingItem[]
+  events              BookingEvent[]
+  payments            Payment[]
+  deposits            Deposit[]
+  refunds             Refund[]
+  damageCharges        DamageCharge[]
+  deliveryJobs          DeliveryJob[]
+  appointments           Appointment[]
+  tailoringJobs           TailoringJob[]
+  cleaningJobs             GarmentCleaningJob[]
+  conditionReports          GarmentConditionReport[]
+
+  @@index([branchId])
+  @@index([customerId])
+  @@index([status])
+  @@index([rentalStart, rentalEnd])
+  @@map("bookings")
+}
+
+/// One row per garment on a booking. The overlap-prevention transaction
+/// (lib/availability-engine.ts) checks this table for date-range conflicts
+/// per garmentId before any insert — see plan's conflict-prevention note.
+model BookingItem {
+  id               String   @id @default(cuid())
+  bookingId        String
+  booking          Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  garmentId        String
+  garment          Garment  @relation(fields: [garmentId], references: [id])
+
+  priceAtBooking   Decimal  @default(0) @db.Decimal(12, 2)
+  depositAtBooking Decimal  @default(0) @db.Decimal(12, 2)
+  notes            String?
+
+  createdAt        DateTime @default(now())
+
+  @@index([garmentId])
+  @@index([bookingId])
+  @@map("booking_items")
+}
+
+/// Append-only booking timeline (spec section 9/26).
+model BookingEvent {
+  id           String   @id @default(cuid())
+  bookingId    String
+  booking      Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  eventType    String
+  description  String
+  actorUserId  String?
+  actorRole    Role?
+  oldValue     String?
+  newValue     String?
+  createdAt    DateTime @default(now())
+
+  @@index([bookingId, createdAt])
+  @@map("booking_events")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// PAYMENTS / DEPOSITS / REFUNDS / DAMAGE CHARGES
+// ─────────────────────────────────────────────────────────────────────────
+
+model Payment {
+  id               String            @id @default(cuid())
+  bookingId        String
+  booking          Booking           @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  type             PaymentType
+  amount           Decimal           @db.Decimal(12, 2)
+  method           TransactionMethod
+  status           String            @default("COMPLETED") // COMPLETED | PENDING | FAILED
+  reference        String?
+
+  receivedByUserId String?
+  receivedBy       User?             @relation("PaymentReceivedBy", fields: [receivedByUserId], references: [id])
+
+  paidAt           DateTime          @default(now())
+  notes            String?
+  createdAt        DateTime          @default(now())
+
+  @@index([bookingId])
+  @@map("payments")
+}
+
+model Deposit {
+  id              String        @id @default(cuid())
+  bookingId       String
+  booking         Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  amount          Decimal       @db.Decimal(12, 2)
+  status          DepositStatus @default(HELD)
+  heldAt          DateTime      @default(now())
+  refundedAmount  Decimal       @default(0) @db.Decimal(12, 2)
+  refundedAt      DateTime?
+  notes           String?
+
+  @@index([bookingId])
+  @@map("deposits")
+}
+
+model Refund {
+  id                 String   @id @default(cuid())
+  bookingId          String
+  booking            Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  amount             Decimal  @db.Decimal(12, 2)
+  reason             String?
+
+  processedByUserId  String?
+  processedBy        User?    @relation("RefundProcessedBy", fields: [processedByUserId], references: [id])
+  processedAt         DateTime @default(now())
+
+  @@index([bookingId])
+  @@map("refunds")
+}
+
+model DamageCharge {
+  id                  String              @id @default(cuid())
+  bookingId           String
+  booking             Booking             @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  conditionReportId   String?
+  conditionReport     GarmentConditionReport? @relation(fields: [conditionReportId], references: [id])
+
+  category            String
+  description         String?
+  amount              Decimal             @db.Decimal(12, 2)
+  status              DamageChargeStatus  @default(PENDING)
+
+  approvedByUserId    String?
+  approvedBy          User?               @relation("DamageChargeApprover", fields: [approvedByUserId], references: [id])
+  approvedAmount      Decimal?            @db.Decimal(12, 2)
+
+  createdAt           DateTime            @default(now())
+
+  @@index([bookingId])
+  @@map("damage_charges")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// DELIVERY
+// ─────────────────────────────────────────────────────────────────────────
+
+model DeliveryJob {
+  id                 String         @id @default(cuid())
+  bookingId          String
+  booking            Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  jobNumber          String         @unique // e.g. "DL-102"
+  type               DeliveryMethod
+  status             DeliveryStatus @default(ASSIGNED)
+
+  assignedDriverId   String?
+  assignedDriver     User?          @relation("DeliveryAssignee", fields: [assignedDriverId], references: [id])
+
+  address            String?
+  phone              String?
+  scheduledDate      DateTime?
+  windowStart        DateTime?
+  windowEnd          DateTime?
+
+  actualPickupAt     DateTime?
+  actualDeliveredAt  DateTime?
+  proofPhotoUrl      String?
+  signatureUrl       String?
+  notes              String?
+
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  @@index([bookingId])
+  @@index([assignedDriverId])
+  @@index([status])
+  @@map("delivery_jobs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// COMMUNICATION
+// ─────────────────────────────────────────────────────────────────────────
+
+model Notification {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type              String   // e.g. OVERDUE_RETURN, ALTERATION_DUE, PAYMENT_OVERDUE ...
+  title             String
+  body              String?
+  isRead            Boolean  @default(false)
+
+  relatedEntityType String?
+  relatedEntityId   String?
+
+  createdAt         DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model MessageTemplate {
+  id         String    @id @default(cuid())
+  branchId   String?
+  branch     Branch?   @relation(fields: [branchId], references: [id])
+
+  name       String    // e.g. "Booking Confirmation"
+  type       String
+  language   Language  @default(EN)
+  subject    String?
+  /// Uses {{customer_name}}, {{garment_name}}, {{appointment_date}}, etc.
+  body       String
+  isActive   Boolean   @default(true)
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@map("message_templates")
+}
+
+model Message {
+  id           String            @id @default(cuid())
+  customerId   String
+  customer     Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  templateId   String?
+
+  channel      MessageChannel
+  direction    MessageDirection
+  body         String
+  status       MessageStatus     @default(QUEUED)
+
+  sentByUserId String?
+  sentBy       User?             @relation("MessageSentBy", fields: [sentByUserId], references: [id])
+  sentAt       DateTime?
+
+  createdAt    DateTime          @default(now())
+
+  @@index([customerId, createdAt])
+  @@map("messages")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// STAFF TASKS / PACKAGES / SUPPLIERS / DOCUMENTS / AUDIT / TRANSFERS
+// ─────────────────────────────────────────────────────────────────────────
+
+model StaffTask {
+  id                String          @id @default(cuid())
+  assignedToUserId  String
+  assignedTo        User            @relation("StaffTaskAssignee", fields: [assignedToUserId], references: [id])
+
+  taskType          String
+  relatedEntityType String?
+  relatedEntityId   String?
+
+  title             String
+  description       String?
+  priority          Priority        @default(MEDIUM)
+  dueAt             DateTime?
+  status            StaffTaskStatus @default(PENDING)
+  completedAt       DateTime?
+
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([assignedToUserId, status])
+  @@map("staff_tasks")
+}
+
+model Package {
+  id          String        @id @default(cuid())
+  branchId    String
+  branch      Branch        @relation(fields: [branchId], references: [id])
+  name        String
+  description String?
+  price       Decimal       @db.Decimal(12, 2)
+  isActive    Boolean       @default(true)
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  items       PackageItem[]
+
+  @@map("packages")
+}
+
+model PackageItem {
+  id              String           @id @default(cuid())
+  packageId       String
+  package         Package          @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  garmentCategory GarmentCategory?
+  garmentId       String?
+  garment         Garment?         @relation(fields: [garmentId], references: [id])
+  name            String
+  quantity        Int              @default(1)
+  notes           String?
+
+  @@map("package_items")
+}
+
+model Supplier {
+  id          String   @id @default(cuid())
+  name        String
+  contactName String?
+  phone       String?
+  email       String?
+  address     String?
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  @@map("suppliers")
+}
+
+model Document {
+  id               String       @id @default(cuid())
+  customerId       String?
+  customer         Customer?    @relation(fields: [customerId], references: [id])
+  garmentId        String?
+  bookingId        String?
+
+  type             DocumentType
+  fileUrl          String
+  fileName         String
+
+  uploadedByUserId String?
+  uploadedBy       User?        @relation("DocumentUploadedBy", fields: [uploadedByUserId], references: [id])
+
+  createdAt        DateTime     @default(now())
+
+  @@index([customerId])
+  @@map("documents")
+}
+
+/// Append-only, every important action logs here (spec section 26).
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  userRole   Role?
+
+  action     String
+  entityType String
+  entityId   String
+
+  oldValue   Json?
+  newValue   Json?
+  notes      String?
+
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model InventoryTransfer {
+  id               String          @id @default(cuid())
+  garmentId        String
+  garment          Garment         @relation(fields: [garmentId], references: [id])
+
+  fromBranchId     String
+  fromBranch       Branch          @relation("TransferFromBranch", fields: [fromBranchId], references: [id])
+  toBranchId       String
+  toBranch         Branch          @relation("TransferToBranch", fields: [toBranchId], references: [id])
+
+  status           TransferStatus  @default(REQUESTED)
+  requestedByUserId String?
+  requestedBy      User?           @relation("TransferRequestedBy", fields: [requestedByUserId], references: [id])
+  approvedByUserId String?
+  approvedBy       User?           @relation("TransferApprovedBy", fields: [approvedByUserId], references: [id])
+
+  notes            String?
+  requestedAt      DateTime        @default(now())
+  resolvedAt       DateTime?
+
+  @@index([garmentId])
+  @@map("inventory_transfers")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// MARKETING SITE — leads for Bridal Rental OS itself (the SaaS product),
+// not a tenant boutique's own customers. Deliberately outside the
+// branch-scoped tenant data model above: this table exists because the
+// marketing site and the operational app currently share one deployment.
+// If this ever grows into true multi-tenant SaaS, move it out to a
+// dedicated CRM/sales system rather than scoping it under a branch.
+// ─────────────────────────────────────────────────────────────────────────
+
+enum InquiryStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  DEMO_SCHEDULED
+  CLOSED_WON
+  CLOSED_LOST
+}
+
+model SalesInquiry {
+  id           String        @id @default(cuid())
+  businessName String
+  contactName  String
+  email        String
+  phone        String?
+  city         String?
+  branchCount  String? // e.g. "1", "2-5", "6+" — free text, not FK'd to anything
+  message      String?
+  status       InquiryStatus @default(NEW)
+  notes        String?
+  createdAt    DateTime      @default(now())
+
+  @@index([status, createdAt])
+  @@map("sales_inquiries")
+}

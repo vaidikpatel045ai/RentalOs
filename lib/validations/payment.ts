@@ -1,0 +1,18 @@
+export const PAYMENT_TYPES = [
+  "RENTAL_FEE",
+  "DEPOSIT",
+  "ADVANCE",
+  "BALANCE",
+  "DELIVERY_FEE",
+  "ALTERATION_FEE",
+  "CLEANING_FEE",
+  "LATE_FEE",
+  "DAMAGE_CHARGE",
+  "TAX",
+  "REFUND",
+  "DISCOUNT",
+] as const;
+
+export const TRANSACTION_METHODS = ["CASH", "CARD", "BANK_TRANSFER", "ONLINE", "CHEQUE", "OTHER"] as const;
+
+export const DEPOSIT_STATUSES = ["HELD", "REFUNDED", "PARTIALLY_REFUNDED", "FORFEITED"] as const;
