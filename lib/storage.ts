@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
 /**
  * Storage adapter abstraction. Production should point this at an
@@ -36,14 +37,57 @@ class LocalDiskStorageAdapter implements StorageAdapter {
   }
 }
 
-// Placeholder for a future S3-compatible adapter. Reads standard env vars
-// (STORAGE_ENDPOINT, STORAGE_BUCKET, STORAGE_ACCESS_KEY, STORAGE_SECRET_KEY)
-// when present — never hardcode credentials.
+// S3-compatible adapter. Reads standard env vars (STORAGE_BUCKET,
+// STORAGE_REGION, STORAGE_ACCESS_KEY, STORAGE_SECRET_KEY, and optionally
+// STORAGE_ENDPOINT for non-AWS S3-compatible providers like Cloudflare R2)
+// — never hardcode credentials. The bucket must allow public s3:GetObject
+// on its objects so uploaded images are directly viewable in the app.
 class S3StorageAdapter implements StorageAdapter {
-  async uploadFile(): Promise<UploadResult> {
-    throw new Error(
-      "S3StorageAdapter not yet implemented — set STORAGE_DRIVER=local until credentials are configured."
+  private client: S3Client;
+  private bucket: string;
+  private publicBaseUrl: string;
+
+  constructor() {
+    const bucket = process.env.STORAGE_BUCKET;
+    const region = process.env.STORAGE_REGION;
+    const accessKeyId = process.env.STORAGE_ACCESS_KEY;
+    const secretAccessKey = process.env.STORAGE_SECRET_KEY;
+    const endpoint = process.env.STORAGE_ENDPOINT || undefined;
+
+    if (!bucket || !region || !accessKeyId || !secretAccessKey) {
+      throw new Error(
+        "S3StorageAdapter requires STORAGE_BUCKET, STORAGE_REGION, STORAGE_ACCESS_KEY and STORAGE_SECRET_KEY."
+      );
+    }
+
+    this.bucket = bucket;
+    this.client = new S3Client({
+      region,
+      endpoint,
+      credentials: { accessKeyId, secretAccessKey },
+    });
+    this.publicBaseUrl = endpoint
+      ? `${endpoint.replace(/\/$/, "")}/${bucket}`
+      : `https://${bucket}.s3.${region}.amazonaws.com`;
+  }
+
+  async uploadFile(
+    file: Buffer,
+    opts: { filename: string; contentType: string; folder: string }
+  ): Promise<UploadResult> {
+    const ext = path.extname(opts.filename) || "";
+    const key = `${opts.folder}/${randomUUID()}${ext}`;
+
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: file,
+        ContentType: opts.contentType,
+      })
     );
+
+    return { url: `${this.publicBaseUrl}/${key}`, key };
   }
 }
 
