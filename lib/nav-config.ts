@@ -15,7 +15,6 @@ import {
   Building2,
   Settings,
   ScrollText,
-  Inbox,
   type LucideIcon,
 } from "lucide-react";
 import { can, homeRouteForRole, type Resource } from "@/lib/permissions";
@@ -41,7 +40,6 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Reports", href: "/dashboard/reports", icon: BarChart3, resource: "reports" },
   { label: "Staff", href: "/dashboard/staff", icon: UserCog, resource: "staff" },
   { label: "Branches", href: "/dashboard/branches", icon: Building2, resource: "branches" },
-  { label: "Inquiries", href: "/dashboard/inquiries", icon: Inbox, resource: "inquiries" },
   { label: "Settings", href: "/dashboard/settings", icon: Settings, resource: "settings" },
   { label: "Audit Log", href: "/dashboard/audit-log", icon: ScrollText, resource: "auditLog" },
 ];

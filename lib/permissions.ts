@@ -27,8 +27,7 @@ export type Resource =
   | "staff"
   | "branches"
   | "settings"
-  | "auditLog"
-  | "inquiries";
+  | "auditLog";
 
 export type Action = "view" | "create" | "update" | "delete" | "approve";
 
@@ -120,9 +119,6 @@ const PERMISSION_MAP: Record<Resource, Partial<Record<Role, Action[]>>> = {
   },
   auditLog: {
     OWNER: ["view"],
-  },
-  inquiries: {
-    OWNER: ["view", "update"],
   },
 };
 
