@@ -1,27 +1,41 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { format } from "date-fns";
+import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { can } from "@/lib/permissions";
 import { formatMoney } from "@/lib/currency";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaymentStatusBadge, GarmentStatusBadge } from "@/components/domain/status-badge";
 import { BookingStatusControl } from "@/components/domain/booking-status-control";
 import { RecordPaymentDialog } from "@/components/domain/record-payment-dialog";
+import { DamageChargeDialog } from "@/components/domain/damage-charge-dialog";
+import { DamageChargeActions } from "@/components/domain/damage-charge-actions";
+import { DocumentsList } from "@/components/domain/documents-list";
 
 export default async function BookingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const booking = await db.booking.findUnique({
-    where: { id },
-    include: {
-      branch: true,
-      customer: true,
-      items: { include: { garment: true } },
-      events: { orderBy: { createdAt: "desc" } },
-      payments: { orderBy: { paidAt: "desc" } },
-      deposits: true,
-    },
-  });
+  const [booking, documents] = await Promise.all([
+    db.booking.findUnique({
+      where: { id },
+      include: {
+        branch: true,
+        customer: true,
+        items: { include: { garment: true } },
+        events: { orderBy: { createdAt: "desc" } },
+        payments: { orderBy: { paidAt: "desc" } },
+        deposits: true,
+        damageCharges: { orderBy: { createdAt: "desc" } },
+      },
+    }),
+    db.document.findMany({ where: { bookingId: id }, orderBy: { createdAt: "desc" } }),
+  ]);
   if (!booking) notFound();
+
+  const session = await auth();
+  const canManageDamage = Boolean(session?.user && can(session.user.role, "conditionReports", "create"));
+  const canApproveDamage = Boolean(session?.user && can(session.user.role, "conditionReports", "update"));
+  const canManageDocuments = Boolean(session?.user && can(session.user.role, "documents", "create"));
 
   return (
     <div className="space-y-6">
@@ -89,6 +103,20 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
               )}
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-heading text-base">Documents</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DocumentsList
+                documents={documents}
+                linkTo={{ bookingId: booking.id }}
+                canManage={canManageDocuments}
+                revalidatePathTarget={`/dashboard/bookings/${booking.id}`}
+              />
+            </CardContent>
+          </Card>
         </div>
 
         <div className="space-y-6">
@@ -131,6 +159,36 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
                 {booking.deposits.map((d) => (
                   <Row key={d.id} label={d.status.replaceAll("_", " ")} value={formatMoney(d.amount, booking.branch.currency)} />
                 ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {(booking.damageCharges.length > 0 || canManageDamage) && (
+            <Card>
+              <CardHeader className="flex-row items-center justify-between">
+                <CardTitle className="font-heading text-base">Damage Charges</CardTitle>
+                {canManageDamage && <DamageChargeDialog bookingId={booking.id} />}
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {booking.damageCharges.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No damage charges.</p>
+                ) : (
+                  booking.damageCharges.map((c) => (
+                    <div key={c.id} className="space-y-1 rounded-md border border-border p-3 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">{c.category}</span>
+                        <span>{formatMoney(c.amount, booking.branch.currency)}</span>
+                      </div>
+                      {c.description && <p className="text-xs text-muted-foreground">{c.description}</p>}
+                      <div className="flex items-center justify-between pt-1">
+                        <span className="text-xs text-muted-foreground">{c.status.replaceAll("_", " ")}</span>
+                        {canApproveDamage && c.status === "PENDING" && (
+                          <DamageChargeActions chargeId={c.id} amount={Number(c.amount)} />
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
               </CardContent>
             </Card>
           )}

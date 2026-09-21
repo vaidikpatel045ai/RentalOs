@@ -27,7 +27,12 @@ export type Resource =
   | "staff"
   | "branches"
   | "settings"
-  | "auditLog";
+  | "auditLog"
+  | "conditionReports"
+  | "packages"
+  | "suppliers"
+  | "documents"
+  | "transfers";
 
 export type Action = "view" | "create" | "update" | "delete" | "approve";
 
@@ -119,6 +124,35 @@ const PERMISSION_MAP: Record<Resource, Partial<Record<Role, Action[]>>> = {
   },
   auditLog: {
     OWNER: ["view"],
+  },
+  conditionReports: {
+    OWNER: ["view", "create", "update", "delete"],
+    MANAGER: ["view", "create", "update", "delete"],
+    SALES: ["view"],
+    STYLIST: ["view"],
+    TAILOR: ["view"],
+  },
+  packages: {
+    OWNER: ["view", "create", "update", "delete"],
+    MANAGER: ["view", "create", "update", "delete"],
+    SALES: ["view"],
+  },
+  suppliers: {
+    OWNER: ["view", "create", "update", "delete"],
+    MANAGER: ["view", "create", "update", "delete"],
+  },
+  documents: {
+    OWNER: ["view", "create", "delete"],
+    MANAGER: ["view", "create", "delete"],
+    SALES: ["view", "create"],
+    STYLIST: ["view"],
+    TAILOR: ["view"],
+    CLEANER: ["view"],
+    DELIVERY: ["view"],
+  },
+  transfers: {
+    OWNER: ["view", "create", "update", "approve"],
+    MANAGER: ["view", "create"],
   },
 };
 

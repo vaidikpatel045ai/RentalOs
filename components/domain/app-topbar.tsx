@@ -18,8 +18,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { CommandSearch } from "@/components/domain/command-search";
+import { NotificationBell } from "@/components/domain/notification-bell";
 import { getNavItemsForRole } from "@/lib/nav-config";
 import { cn } from "@/lib/utils";
+import type { Notification } from "@prisma/client";
 
 function initials(name: string) {
   return name
@@ -35,11 +37,15 @@ export function AppTopbar({
   email,
   role,
   branchName,
+  unreadCount,
+  notifications,
 }: {
   name: string;
   email: string;
   role: Role;
   branchName?: string | null;
+  unreadCount: number;
+  notifications: Notification[];
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
@@ -89,6 +95,7 @@ export function AppTopbar({
             {branchName}
           </span>
         ) : null}
+        <NotificationBell unreadCount={unreadCount} notifications={notifications} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="gap-2 px-2">

@@ -4,6 +4,8 @@ import { auth } from "@/lib/auth";
 import { signOutAction } from "@/lib/actions/auth-actions";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { NotificationBell } from "@/components/domain/notification-bell";
+import { getUnreadNotificationCount, getRecentNotifications } from "@/lib/queries/notifications";
 
 // Shared shell for the mobile-first operational portals (Tailor, Cleaner,
 // Delivery, Customer). Deliberately minimal — no admin sidebar — per spec
@@ -21,12 +23,17 @@ export default async function PortalLayout({ children }: { children: React.React
     .slice(0, 2)
     .join("")
     .toUpperCase();
+  const [unreadCount, notifications] = await Promise.all([
+    getUnreadNotificationCount(session.user.id),
+    getRecentNotifications(session.user.id),
+  ]);
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <header className="flex h-16 items-center justify-between border-b border-border px-4">
         <span className="font-heading text-lg tracking-tight">Bridal Rental OS</span>
         <div className="flex items-center gap-3">
+          <NotificationBell unreadCount={unreadCount} notifications={notifications} />
           <div className="hidden items-center gap-2 sm:flex">
             <Avatar className="size-7">
               <AvatarFallback className="bg-gold/15 text-xs text-gold">{initials}</AvatarFallback>

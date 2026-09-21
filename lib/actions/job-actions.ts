@@ -10,6 +10,7 @@ import type { ActionState } from "@/lib/actions/customer-actions";
 import { tailoringJobSchema, cleaningJobSchema, deliveryJobSchema } from "@/lib/validations/job";
 import { snapshotMeasurement, type MeasurementSnapshot } from "@/lib/measurements";
 import { getStorageAdapter } from "@/lib/storage";
+import { notifyUser } from "@/lib/notify";
 import type { Prisma } from "@prisma/client";
 
 /** TAILOR/CLEANER may only touch jobs assigned to them; OWNER/MANAGER can
@@ -199,6 +200,16 @@ export async function createTailoringJob(_prev: ActionState, formData: FormData)
     }
   });
 
+  if (data.assignedToUserId) {
+    await notifyUser(data.assignedToUserId, {
+      type: "TAILORING_ASSIGNED",
+      title: "New tailoring job assigned",
+      body: `${garment.sku} — ${garment.name}`,
+      relatedEntityType: "TailoringJob",
+      relatedEntityId: data.garmentId,
+    });
+  }
+
   updateTag("dashboard");
   revalidatePath("/dashboard/tailoring");
   redirect("/dashboard/tailoring");
@@ -247,6 +258,16 @@ export async function createCleaningJob(_prev: ActionState, formData: FormData):
       });
     }
   });
+
+  if (data.assignedToUserId) {
+    await notifyUser(data.assignedToUserId, {
+      type: "CLEANING_ASSIGNED",
+      title: "New cleaning job assigned",
+      body: `${garment.sku} — ${garment.name}`,
+      relatedEntityType: "GarmentCleaningJob",
+      relatedEntityId: data.garmentId,
+    });
+  }
 
   updateTag("dashboard");
   revalidatePath("/dashboard/cleaning");
@@ -311,6 +332,16 @@ export async function createDeliveryJob(_prev: ActionState, formData: FormData):
         return { error: "Could not create delivery job. Please try again." };
       }
     }
+  }
+
+  if (data.assignedDriverId) {
+    await notifyUser(data.assignedDriverId, {
+      type: "DELIVERY_ASSIGNED",
+      title: "New delivery assigned",
+      body: data.address ?? undefined,
+      relatedEntityType: "DeliveryJob",
+      relatedEntityId: data.bookingId,
+    });
   }
 
   revalidatePath("/dashboard/delivery");

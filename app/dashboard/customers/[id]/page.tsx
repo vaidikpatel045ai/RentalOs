@@ -2,12 +2,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { format } from "date-fns";
 import { Pencil, Phone, MessageCircle, Mail } from "lucide-react";
+import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { can } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BookingStatusBadge, PaymentStatusBadge } from "@/components/domain/status-badge";
 import { MeasurementFormDialog } from "@/components/domain/measurement-form-dialog";
+import { DocumentsList } from "@/components/domain/documents-list";
 import { addMeasurement } from "@/lib/actions/customer-actions";
 import { formatMoney } from "@/lib/currency";
 
@@ -40,11 +43,14 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
       measurements: { orderBy: { version: "desc" } },
       bookings: { orderBy: { createdAt: "desc" }, include: { items: { include: { garment: true } } } },
       appointments: { orderBy: { scheduledAt: "desc" }, take: 10 },
+      documents: { orderBy: { createdAt: "desc" } },
     },
   });
   if (!customer) notFound();
 
   const latestMeasurement = customer.measurements.find((m) => m.isLatest);
+  const session = await auth();
+  const canManageDocuments = Boolean(session?.user && can(session.user.role, "documents", "create"));
 
   return (
     <div className="space-y-6">
@@ -104,6 +110,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
           <TabsTrigger value="bookings">Bookings ({customer.bookings.length})</TabsTrigger>
           <TabsTrigger value="measurements">Measurements</TabsTrigger>
           <TabsTrigger value="appointments">Appointments</TabsTrigger>
+          <TabsTrigger value="documents">Documents ({customer.documents.length})</TabsTrigger>
           <TabsTrigger value="notes">Notes & Preferences</TabsTrigger>
         </TabsList>
 
@@ -187,6 +194,15 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
               </div>
             ))
           )}
+        </TabsContent>
+
+        <TabsContent value="documents">
+          <DocumentsList
+            documents={customer.documents}
+            linkTo={{ customerId: customer.id }}
+            canManage={canManageDocuments}
+            revalidatePathTarget={`/dashboard/customers/${customer.id}`}
+          />
         </TabsContent>
 
         <TabsContent value="notes" className="space-y-3">

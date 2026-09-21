@@ -14,6 +14,8 @@ import { GarmentStatusBadge } from "@/components/domain/status-badge";
 import { GarmentStatusControl } from "@/components/domain/garment-status-control";
 import { GarmentImageUpload } from "@/components/domain/garment-image-upload";
 import { GarmentDeleteControl } from "@/components/domain/garment-delete-control";
+import { ConditionReportDialog } from "@/components/domain/condition-report-dialog";
+import { RepairStatusControl } from "@/components/domain/repair-status-control";
 
 export default async function GarmentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -29,6 +31,8 @@ export default async function GarmentDetailPage({ params }: { params: Promise<{ 
         orderBy: { createdAt: "desc" },
         take: 5,
       },
+      conditionReports: { orderBy: { createdAt: "desc" }, take: 10, include: { inspectedBy: true } },
+      repairs: { orderBy: { createdAt: "desc" }, take: 10 },
     },
   });
   if (!garment) notFound();
@@ -36,6 +40,9 @@ export default async function GarmentDetailPage({ params }: { params: Promise<{ 
   const session = await auth();
   const canEdit = Boolean(session?.user && can(session.user.role, "garments", "update"));
   const canDelete = Boolean(session?.user && can(session.user.role, "garments", "delete"));
+  const canInspect = Boolean(session?.user && can(session.user.role, "conditionReports", "create"));
+  const canUpdateRepair = Boolean(session?.user && can(session.user.role, "conditionReports", "update"));
+  const latestBookingId = garment.bookingItems[0]?.bookingId ?? null;
 
   const qrDataUrl = await generateQrDataUrl(garment.qrCodeValue);
 
@@ -132,6 +139,62 @@ export default async function GarmentDetailPage({ params }: { params: Promise<{ 
                     </div>
                   </div>
                 ))
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex-row items-center justify-between">
+              <CardTitle className="font-heading text-base">Condition & Repairs</CardTitle>
+              {canInspect && <ConditionReportDialog garmentId={garment.id} latestBookingId={latestBookingId} />}
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {garment.conditionReports.length === 0 && garment.repairs.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No inspections logged yet.</p>
+              ) : (
+                <>
+                  {garment.repairs.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">Repairs</p>
+                      {garment.repairs.map((r) => (
+                        <div key={r.id} className="flex items-center justify-between rounded-md border border-border p-3">
+                          <div>
+                            <p className="text-sm">{r.description}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatMoney(r.cost, garment.branch.currency)}
+                              {r.completedAt ? ` · completed ${format(r.completedAt, "d MMM")}` : ""}
+                            </p>
+                          </div>
+                          {canUpdateRepair ? (
+                            <RepairStatusControl repairId={r.id} status={r.status} />
+                          ) : (
+                            <span className="text-xs text-muted-foreground">{r.status.replaceAll("_", " ")}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {garment.conditionReports.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">Inspection History</p>
+                      {garment.conditionReports.map((cr) => (
+                        <div key={cr.id} className="rounded-md border border-border p-3 text-sm">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium">
+                              {cr.reportType.replaceAll("_", " ")} — {Number(cr.conditionScore).toFixed(1)}/10
+                            </span>
+                            <span className="text-xs text-muted-foreground">{format(cr.createdAt, "d MMM, HH:mm")}</span>
+                          </div>
+                          {cr.damageCategories.length > 0 && (
+                            <p className="mt-1 text-xs text-risk-unsafe">{cr.damageCategories.join(", ").replaceAll("_", " ")}</p>
+                          )}
+                          {cr.description && <p className="mt-1 text-xs text-muted-foreground">{cr.description}</p>}
+                          <p className="mt-1 text-xs text-muted-foreground">Inspected by {cr.inspectedBy?.name ?? "—"}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
