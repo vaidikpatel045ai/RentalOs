@@ -68,7 +68,7 @@ export default async function GarmentsPage({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
+        <div data-tour="page-header">
           <h1 className="font-heading text-2xl">Inventory</h1>
           <p className="text-sm text-muted-foreground">
             {totalCount} {showingArchived ? "deleted garments" : "garments"} total
@@ -76,7 +76,7 @@ export default async function GarmentsPage({
           </p>
         </div>
         {session?.user.role && can(session.user.role, "garments", "create") && (
-          <Button asChild>
+          <Button asChild data-tour="page-action">
             <Link href="/dashboard/garments/new">
               <Plus className="size-4" /> Add Garment
             </Link>
@@ -84,9 +84,11 @@ export default async function GarmentsPage({
         )}
       </div>
 
-      <FilterBar searchKey="q" searchPlaceholder="Search SKU or name…" filters={filters} />
+      <div data-tour="page-filters">
+        <FilterBar searchKey="q" searchPlaceholder="Search SKU or name…" filters={filters} />
+      </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-tour="page-content">
         {garments.length === 0 ? (
           <p className="col-span-full py-12 text-center text-sm text-muted-foreground">No garments found.</p>
         ) : (

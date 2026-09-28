@@ -5,6 +5,7 @@ import { signOutAction } from "@/lib/actions/auth-actions";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { NotificationBell } from "@/components/domain/notification-bell";
+import { PageTour } from "@/components/tour/page-tour";
 import { getUnreadNotificationCount, getRecentNotifications } from "@/lib/queries/notifications";
 
 // Shared shell for the mobile-first operational portals (Tailor, Cleaner,
@@ -33,6 +34,7 @@ export default async function PortalLayout({ children }: { children: React.React
       <header className="flex h-16 items-center justify-between border-b border-border px-4">
         <span className="font-heading text-lg tracking-tight">Bridal Rental OS</span>
         <div className="flex items-center gap-3">
+          <PageTour />
           <NotificationBell unreadCount={unreadCount} notifications={notifications} />
           <div className="hidden items-center gap-2 sm:flex">
             <Avatar className="size-7">

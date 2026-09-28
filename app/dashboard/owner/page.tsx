@@ -27,14 +27,14 @@ export default async function OwnerDashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div>
+      <div data-tour="page-header">
         <h1 className="font-heading text-2xl">Command Center</h1>
         <p className="text-sm text-muted-foreground">
           Every garment, every bride, every workflow — at a glance.
         </p>
       </div>
 
-      <section>
+      <section data-tour="kpi-today">
         <h2 className="mb-3 text-sm font-medium text-muted-foreground">Today</h2>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard label="Appointments" value={data.today.appointments} icon={CalendarDays} />
@@ -44,7 +44,7 @@ export default async function OwnerDashboardPage() {
         </div>
       </section>
 
-      <section>
+      <section data-tour="kpi-operations">
         <h2 className="mb-3 text-sm font-medium text-muted-foreground">Operations</h2>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard
@@ -74,7 +74,7 @@ export default async function OwnerDashboardPage() {
         </div>
       </section>
 
-      <section>
+      <section data-tour="kpi-inventory">
         <h2 className="mb-3 text-sm font-medium text-muted-foreground">Inventory Position</h2>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard label="Deposits Held" value={formatMoneyCompact(data.depositsHeldAmount, currency)} icon={ShieldCheck} tone="gold" />
@@ -84,14 +84,14 @@ export default async function OwnerDashboardPage() {
         </div>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-3">
+      <section className="grid gap-6 lg:grid-cols-3" data-tour="chart-risk">
         <div className="lg:col-span-2">
           <RevenueChart revenue={data.revenue} currency={currency} />
         </div>
         <AtRiskPanel items={atRisk} />
       </section>
 
-      <section>
+      <section data-tour="kpi-advanced">
         <h2 className="mb-3 text-sm font-medium text-muted-foreground">Operational KPIs</h2>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
           <KpiCard label="Garment Utilization" value={`${data.kpis.garmentUtilizationPct.toFixed(0)}%`} icon={Percent} />

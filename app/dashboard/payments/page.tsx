@@ -82,12 +82,12 @@ export default async function PaymentsPage({
 
   return (
     <div className="space-y-6">
-      <div>
+      <div data-tour="page-header">
         <h1 className="font-heading text-2xl">Payments</h1>
         <p className="text-sm text-muted-foreground">All transactions and deposits across your bookings.</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-2" data-tour="kpi-today">
         <KpiCard label="Total Collected" value={formatMoneyCompact(totalCollectedAgg._sum.amount ?? 0)} icon={Wallet} />
         <KpiCard label="Deposits Held" value={formatMoneyCompact(depositsHeldAgg._sum.amount ?? 0)} icon={ShieldCheck} tone="gold" />
       </div>
@@ -99,8 +99,10 @@ export default async function PaymentsPage({
         </TabsList>
 
         <TabsContent value="payments" className="space-y-4">
-          <FilterBar filters={paymentFilters} />
-          <Card>
+          <div data-tour="page-filters">
+            <FilterBar filters={paymentFilters} />
+          </div>
+          <Card data-tour="page-content">
             <CardContent className="p-0">
               <Table>
                 <TableHeader>

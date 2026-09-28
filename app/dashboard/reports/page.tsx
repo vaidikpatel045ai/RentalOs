@@ -46,14 +46,14 @@ export default async function ReportsPage({
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
+        <div data-tour="page-header">
           <h1 className="font-heading text-2xl">Reports & Analytics</h1>
           <p className="text-sm text-muted-foreground">Garment ROI, dead-stock intelligence and revenue breakdowns.</p>
         </div>
         {isOwner && <BranchSwitcher branches={branches} activeBranchId={branchId} basePath="/dashboard/reports" allowAll />}
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5" data-tour="kpi-today">
         <KpiCard label="Total Garments" value={summary.totalGarments} />
         <KpiCard label="Lifetime Revenue" value={formatMoneyCompact(summary.totalRevenue, currency)} icon={Wallet} tone="gold" />
         <KpiCard
@@ -68,7 +68,7 @@ export default async function ReportsPage({
       <div className="grid gap-6 lg:grid-cols-2">
         <CategoryRevenueChart data={categoryRevenue} currency={currency} />
 
-        <Card>
+        <Card data-tour="page-content">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 font-heading text-base">
               <TrendingUp className="size-4 text-risk-safe" /> Top Performing Garments
@@ -115,7 +115,7 @@ export default async function ReportsPage({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
+        <Card data-tour="page-secondary">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 font-heading text-base">
               <TrendingDown className="size-4 text-risk-unsafe" /> Underperforming Inventory

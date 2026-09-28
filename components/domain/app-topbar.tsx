@@ -19,6 +19,7 @@ import {
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { CommandSearch } from "@/components/domain/command-search";
 import { NotificationBell } from "@/components/domain/notification-bell";
+import { PageTour } from "@/components/tour/page-tour";
 import { getNavItemsForRole } from "@/lib/nav-config";
 import { cn } from "@/lib/utils";
 import type { Notification } from "@prisma/client";
@@ -95,6 +96,7 @@ export function AppTopbar({
             {branchName}
           </span>
         ) : null}
+        <PageTour />
         <NotificationBell unreadCount={unreadCount} notifications={notifications} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

@@ -43,12 +43,12 @@ export default async function CleanerPortalPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div>
+      <div data-tour="page-header">
         <h1 className="font-heading text-xl">Cleaning Queue</h1>
         <p className="text-sm text-muted-foreground">{activeCount} active jobs</p>
       </div>
 
-      <Tabs defaultValue={groups.overdue.length > 0 ? "overdue" : groups.today.length > 0 ? "today" : "upcoming"}>
+      <Tabs defaultValue={groups.overdue.length > 0 ? "overdue" : groups.today.length > 0 ? "today" : "upcoming"} data-tour="page-content">
         <TabsList>
           <TabsTrigger value="overdue">Overdue{groups.overdue.length > 0 ? ` (${groups.overdue.length})` : ""}</TabsTrigger>
           <TabsTrigger value="today">Today{groups.today.length > 0 ? ` (${groups.today.length})` : ""}</TabsTrigger>

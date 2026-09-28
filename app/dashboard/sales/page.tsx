@@ -33,11 +33,11 @@ export default async function SalesDashboardPage() {
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <div>
+        <div data-tour="page-header">
           <h1 className="font-heading text-2xl">Front Desk</h1>
           <p className="text-sm text-muted-foreground">Today&apos;s appointments and recent bookings.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2" data-tour="page-action">
           <Button asChild variant="outline">
             <Link href="/dashboard/appointments/new">
               <Plus className="size-4" /> New Appointment
@@ -52,7 +52,7 @@ export default async function SalesDashboardPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
+        <Card data-tour="page-content">
           <CardHeader>
             <CardTitle className="font-heading text-base">Today&apos;s Appointments</CardTitle>
           </CardHeader>
@@ -75,7 +75,7 @@ export default async function SalesDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card data-tour="page-secondary">
           <CardHeader>
             <CardTitle className="font-heading text-base">Recent Bookings</CardTitle>
           </CardHeader>

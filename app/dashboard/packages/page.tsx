@@ -50,12 +50,12 @@ export default async function PackagesPage({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
+        <div data-tour="page-header">
           <h1 className="font-heading text-2xl">Packages</h1>
           <p className="text-sm text-muted-foreground">{totalCount} packages</p>
         </div>
         {canCreate && (
-          <Button asChild>
+          <Button asChild data-tour="page-action">
             <Link href="/dashboard/packages/new">
               <Plus className="size-4" /> New Package
             </Link>
@@ -63,9 +63,11 @@ export default async function PackagesPage({
         )}
       </div>
 
-      <FilterBar searchKey="q" searchPlaceholder="Search packages…" filters={filters} />
+      <div data-tour="page-filters">
+        <FilterBar searchKey="q" searchPlaceholder="Search packages…" filters={filters} />
+      </div>
 
-      <Card>
+      <Card data-tour="page-content">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>

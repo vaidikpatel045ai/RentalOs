@@ -37,7 +37,7 @@ export default async function CalendarPage({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
+        <div data-tour="page-header">
           <h1 className="font-heading text-2xl">Calendar</h1>
           <p className="text-sm text-muted-foreground">Appointments, pickups and returns.</p>
         </div>
@@ -56,9 +56,15 @@ export default async function CalendarPage({
         </div>
       </div>
 
-      {isOwner && <FilterBar filters={filters} />}
+      {isOwner && (
+        <div data-tour="page-filters">
+          <FilterBar filters={filters} />
+        </div>
+      )}
 
-      <CalendarMonth month={month} events={events} />
+      <div data-tour="page-content">
+        <CalendarMonth month={month} events={events} />
+      </div>
 
       <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
         <Legend color="bg-blue-500" label="Appointment" />

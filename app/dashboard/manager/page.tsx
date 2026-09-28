@@ -23,12 +23,12 @@ export default async function ManagerDashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div>
+      <div data-tour="page-header">
         <h1 className="font-heading text-2xl">{branch?.name} — Branch Operations</h1>
         <p className="text-sm text-muted-foreground">Today&apos;s operational picture for your branch.</p>
       </div>
 
-      <section>
+      <section data-tour="kpi-today">
         <h2 className="mb-3 text-sm font-medium text-muted-foreground">Today</h2>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard label="Appointments" value={data.today.appointments} icon={CalendarDays} />
@@ -38,7 +38,7 @@ export default async function ManagerDashboardPage() {
         </div>
       </section>
 
-      <section>
+      <section data-tour="kpi-operations">
         <h2 className="mb-3 text-sm font-medium text-muted-foreground">Operations</h2>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard label="Alterations Due" value={data.alterationsDue} icon={Scissors} tone={data.alterationsDue > 0 ? "warning" : "default"} />
@@ -53,7 +53,9 @@ export default async function ManagerDashboardPage() {
         </div>
       </section>
 
-      <AtRiskPanel items={atRisk} />
+      <div data-tour="page-secondary">
+        <AtRiskPanel items={atRisk} />
+      </div>
     </div>
   );
 }

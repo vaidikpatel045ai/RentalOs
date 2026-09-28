@@ -19,14 +19,14 @@ export default async function BranchesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
+        <div data-tour="page-header">
           <h1 className="font-heading text-2xl">Branches</h1>
           <p className="text-sm text-muted-foreground">
             {branches.length} active locations · new markets (e.g. USA) are added here without any code changes.
           </p>
         </div>
         {canCreate && (
-          <Button asChild>
+          <Button asChild data-tour="page-action">
             <Link href="/dashboard/branches/new">
               <Plus className="size-4" /> New Branch
             </Link>
@@ -34,7 +34,7 @@ export default async function BranchesPage() {
         )}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-tour="page-content">
         {branches.map((b) => (
           <Card key={b.id}>
             <CardHeader className="flex-row items-start justify-between space-y-0">

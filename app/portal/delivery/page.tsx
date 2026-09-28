@@ -14,7 +14,7 @@ export default async function DeliveryPortalPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div>
+      <div data-tour="page-header">
         <h1 className="font-heading text-xl">Delivery & Pickup</h1>
         <p className="text-sm text-muted-foreground">{jobs.length} active jobs</p>
       </div>
@@ -22,7 +22,7 @@ export default async function DeliveryPortalPage() {
       {jobs.length === 0 ? (
         <p className="text-sm text-muted-foreground">Nothing assigned right now.</p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3" data-tour="page-content">
           {jobs.map((job) => (
             <Card key={job.id}>
               <CardHeader>

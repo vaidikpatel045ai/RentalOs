@@ -56,12 +56,12 @@ export default async function DeliveryPage({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
+        <div data-tour="page-header">
           <h1 className="font-heading text-2xl">Delivery & Pickup</h1>
           <p className="text-sm text-muted-foreground">{totalCount} jobs total</p>
         </div>
         {session?.user.role && can(session.user.role, "delivery", "create") && (
-          <Button asChild>
+          <Button asChild data-tour="page-action">
             <Link href="/dashboard/delivery/new">
               <Plus className="size-4" /> Create Job
             </Link>
@@ -69,9 +69,11 @@ export default async function DeliveryPage({
         )}
       </div>
 
-      <FilterBar filters={filters} />
+      <div data-tour="page-filters">
+        <FilterBar filters={filters} />
+      </div>
 
-      <Card>
+      <Card data-tour="page-content">
         <CardContent className="p-0">
           <Table>
             <TableHeader>

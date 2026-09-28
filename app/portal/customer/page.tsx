@@ -29,7 +29,7 @@ export default async function CustomerPortalPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div>
+      <div data-tour="page-header">
         <h1 className="font-heading text-xl">Welcome, {customer.firstName}</h1>
         <p className="text-sm text-muted-foreground">Your bookings and upcoming appointments.</p>
       </div>
@@ -50,7 +50,7 @@ export default async function CustomerPortalPage() {
         </Card>
       )}
 
-      <div className="space-y-3">
+      <div className="space-y-3" data-tour="page-content">
         {customer.bookings.map((b) => (
           <Card key={b.id}>
             <CardHeader className="flex-row items-center justify-between space-y-0">
