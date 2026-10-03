@@ -38,6 +38,7 @@ export async function createStaff(_prev: ActionState, formData: FormData): Promi
       email,
       passwordHash,
       role: data.role,
+      organizationId: session.user.organizationId,
       branchId: data.branchId || null,
       phone: data.phone || null,
       staffProfile: {

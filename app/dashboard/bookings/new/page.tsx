@@ -4,7 +4,7 @@ import { BookingForm } from "@/components/domain/booking-form";
 
 export default async function NewBookingPage() {
   const session = await auth();
-  const branches = await getCachedBranches();
+  const branches = await getCachedBranches(session!.user.organizationId!);
 
   return (
     <div className="max-w-4xl space-y-6">

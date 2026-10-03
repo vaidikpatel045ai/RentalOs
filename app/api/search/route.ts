@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { resolveBranchWhere } from "@/lib/tenant";
 
 export interface SearchResult {
   type: "customer" | "garment" | "booking";
@@ -11,8 +12,9 @@ export interface SearchResult {
 }
 
 // Global search across customer / garment / booking by name, phone, SKU or
-// booking number (spec section 31). Scoped to the caller's branch unless
-// they're OWNER (who sees across all branches).
+// booking number (spec section 31). Scoped to the caller's branch, or to
+// every branch in their organization for an OWNER with none picked — never
+// to literally every branch in the table.
 export async function GET(request: Request) {
   const session = await auth();
   if (!session?.user) {
@@ -25,10 +27,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ results: [] satisfies SearchResult[] });
   }
 
-  const branchFilter =
-    session.user.role === "OWNER" || !session.user.branchId
-      ? {}
-      : { branchId: session.user.branchId };
+  const branchFilter = await resolveBranchWhere(session.user);
 
   const [customers, garments, bookings] = await Promise.all([
     db.customer.findMany({

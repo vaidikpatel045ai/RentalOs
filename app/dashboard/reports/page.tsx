@@ -28,12 +28,13 @@ export default async function ReportsPage({
   const { branchId: branchIdParam } = await searchParams;
   const branchId = isOwner ? branchIdParam : session?.user.branchId ?? undefined;
 
+  const organizationId = session!.user.organizationId!;
   const [branches, summary, performance, categoryRevenue, topCustomers] = await Promise.all([
-    isOwner ? getCachedBranches() : Promise.resolve([]),
-    getReportsSummary({ branchId }),
-    getGarmentPerformance({ branchId }),
-    getRevenueByCategory({ branchId }),
-    getTopCustomers({ branchId }),
+    isOwner ? getCachedBranches(organizationId) : Promise.resolve([]),
+    getReportsSummary({ branchId, organizationId }),
+    getGarmentPerformance({ branchId, organizationId }),
+    getRevenueByCategory({ branchId, organizationId }),
+    getTopCustomers({ branchId, organizationId }),
   ]);
 
   const currency = "AED";

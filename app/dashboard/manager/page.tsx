@@ -9,14 +9,14 @@ import { formatMoneyCompact } from "@/lib/currency";
 
 export default async function ManagerDashboardPage() {
   const session = await auth();
-  if (!session?.user.branchId) {
+  if (!session?.user.branchId || !session.user.organizationId) {
     redirect("/login");
   }
 
   const [branch, data, atRisk] = await Promise.all([
     db.branch.findUnique({ where: { id: session.user.branchId } }),
-    getOwnerDashboardData({ branchId: session.user.branchId }),
-    getAtRiskBookings({ branchId: session.user.branchId }),
+    getOwnerDashboardData({ branchId: session.user.branchId, organizationId: session.user.organizationId }),
+    getAtRiskBookings({ branchId: session.user.branchId, organizationId: session.user.organizationId }),
   ]);
 
   const currency = branch?.currency ?? "AED";

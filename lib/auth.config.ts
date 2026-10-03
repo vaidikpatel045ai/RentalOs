@@ -20,6 +20,7 @@ export const authConfig = {
       if (user) {
         token.role = (user as { role: Role }).role;
         token.branchId = (user as { branchId: string | null }).branchId;
+        token.organizationId = (user as { organizationId: string | null }).organizationId;
         token.id = user.id as string;
       }
       return token;
@@ -29,6 +30,7 @@ export const authConfig = {
         session.user.id = token.id as string;
         session.user.role = token.role as Role;
         session.user.branchId = token.branchId as string | null;
+        session.user.organizationId = token.organizationId as string | null;
       }
       return session;
     },

@@ -6,7 +6,7 @@ import { createAppointment } from "@/lib/actions/appointment-actions";
 
 export default async function NewAppointmentPage() {
   const session = await auth();
-  const branches = await getCachedBranches();
+  const branches = await getCachedBranches(session!.user.organizationId!);
 
   return (
     <div className="max-w-2xl space-y-6">

@@ -11,6 +11,8 @@ import {
   TrendingUp,
   Timer,
 } from "lucide-react";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { KpiCard } from "@/components/domain/kpi-card";
 import { AtRiskPanel } from "@/components/domain/at-risk-panel";
 import { RevenueChart } from "@/components/domain/revenue-chart";
@@ -18,7 +20,13 @@ import { getOwnerDashboardData, getAtRiskBookings } from "@/lib/queries/dashboar
 import { formatMoneyCompact } from "@/lib/currency";
 
 export default async function OwnerDashboardPage() {
-  const [data, atRisk] = await Promise.all([getOwnerDashboardData(), getAtRiskBookings()]);
+  const session = await auth();
+  if (!session?.user.organizationId) redirect("/login");
+
+  const [data, atRisk] = await Promise.all([
+    getOwnerDashboardData({ organizationId: session.user.organizationId }),
+    getAtRiskBookings({ organizationId: session.user.organizationId }),
+  ]);
 
   // Owner view spans branches (potentially multiple currencies once the US
   // expansion lands); AED is the display default until per-branch currency

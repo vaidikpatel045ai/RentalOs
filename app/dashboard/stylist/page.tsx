@@ -3,12 +3,17 @@ import { format } from "date-fns";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getCachedBranches } from "@/lib/queries/branches";
 
 export default async function StylistDashboardPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const branchWhere = session.user.branchId ? { branchId: session.user.branchId } : {};
+  // Stylist always has a branchId in practice — this org-wide fallback only
+  // matters for the unusual case of a Stylist account with none assigned.
+  const branchWhere = session.user.branchId
+    ? { branchId: session.user.branchId }
+    : { branchId: { in: (await getCachedBranches(session.user.organizationId ?? "")).map((b) => b.id) } };
 
   const upcomingFittings = await db.appointment.findMany({
     where: {

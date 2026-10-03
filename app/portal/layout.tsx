@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { NotificationBell } from "@/components/domain/notification-bell";
 import { PageTour } from "@/components/tour/page-tour";
 import { getUnreadNotificationCount, getRecentNotifications } from "@/lib/queries/notifications";
+import { getOrganizationForUser, isOrganizationActive } from "@/lib/tenant";
 
 // Shared shell for the mobile-first operational portals (Tailor, Cleaner,
 // Delivery, Customer). Deliberately minimal — no admin sidebar — per spec
@@ -16,6 +17,11 @@ import { getUnreadNotificationCount, getRecentNotifications } from "@/lib/querie
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
+
+  const organization = await getOrganizationForUser(session.user.organizationId);
+  if (!isOrganizationActive(organization)) {
+    redirect("/suspended");
+  }
 
   const name = session.user.name ?? session.user.email ?? "User";
   const initials = name

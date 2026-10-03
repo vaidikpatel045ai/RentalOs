@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { resolveBranchWhere } from "@/lib/tenant";
 
 /** Booking picker feed — used by the delivery-job creation form. */
 export async function GET(request: Request) {
@@ -10,10 +11,11 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q")?.trim();
   const branchId = searchParams.get("branchId") ?? undefined;
+  const branchWhere = await resolveBranchWhere(session.user, branchId);
 
   const bookings = await db.booking.findMany({
     where: {
-      ...(branchId ? { branchId } : {}),
+      ...branchWhere,
       status: { in: ["CONFIRMED", "IN_PROGRESS"] },
       ...(q
         ? {

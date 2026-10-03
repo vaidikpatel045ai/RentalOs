@@ -16,7 +16,7 @@ export default async function SettingsPage({
     redirect("/dashboard");
   }
 
-  const branches = await getCachedBranches();
+  const branches = await getCachedBranches(session!.user.organizationId!);
   const { branchId: branchIdParam } = await searchParams;
   const activeBranchId = branchIdParam ?? branches[0]?.id;
   const branch = branches.find((b) => b.id === activeBranchId);

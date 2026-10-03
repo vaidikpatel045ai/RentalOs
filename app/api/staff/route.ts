@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { resolveBranchWhere } from "@/lib/tenant";
 import type { Role } from "@prisma/client";
 
 /** Staff picker feed, filterable by role — used by tailoring/cleaning/delivery
@@ -12,11 +13,12 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const role = searchParams.get("role") ?? undefined;
   const branchId = searchParams.get("branchId") ?? undefined;
+  const branchWhere = await resolveBranchWhere(session.user, branchId);
 
   const staff = await db.user.findMany({
     where: {
       ...(role ? { role: role as Role } : {}),
-      ...(branchId ? { branchId } : {}),
+      ...branchWhere,
       isActive: true,
     },
     select: { id: true, name: true, email: true, role: true },

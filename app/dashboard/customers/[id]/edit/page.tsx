@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getCachedBranches } from "@/lib/queries/branches";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,11 +8,14 @@ import { updateCustomer } from "@/lib/actions/customer-actions";
 
 export default async function EditCustomerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const session = await auth();
+  if (!session?.user.organizationId) notFound();
+
   const [customer, branches] = await Promise.all([
-    db.customer.findUnique({ where: { id } }),
-    getCachedBranches(),
+    db.customer.findUnique({ where: { id }, include: { branch: true } }),
+    getCachedBranches(session.user.organizationId),
   ]);
-  if (!customer) notFound();
+  if (!customer || customer.branch.organizationId !== session.user.organizationId) notFound();
 
   return (
     <div className="max-w-3xl space-y-6">

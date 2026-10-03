@@ -4,6 +4,7 @@ import { differenceInDays } from "date-fns";
 
 export interface ReportsFilter {
   branchId?: string;
+  organizationId: string;
 }
 
 /**
@@ -30,8 +31,8 @@ export interface GarmentPerformanceRow {
   currentStatus: string;
 }
 
-async function computeGarmentPerformance(branchId?: string): Promise<GarmentPerformanceRow[]> {
-  const branchWhere = branchId ? { branchId } : {};
+async function computeGarmentPerformance(branchId: string | undefined, organizationId: string): Promise<GarmentPerformanceRow[]> {
+  const branchWhere = branchId ? { branchId } : { branch: { organizationId } };
 
   const [garments, history] = await Promise.all([
     db.garment.findMany({
@@ -59,7 +60,7 @@ async function computeGarmentPerformance(branchId?: string): Promise<GarmentPerf
     // Postgres, or a denormalized `lastActivityAt` column on Garment
     // updated alongside garmentStatusHistory.create()).
     db.garmentStatusHistory.findMany({
-      where: branchWhere.branchId ? { garment: { branchId: branchWhere.branchId } } : {},
+      where: { garment: branchWhere },
       select: { garmentId: true, createdAt: true },
       orderBy: { createdAt: "asc" },
     }),
@@ -93,14 +94,14 @@ async function computeGarmentPerformance(branchId?: string): Promise<GarmentPerf
 }
 
 const getCachedGarmentPerformance = unstable_cache(
-  (branchKey: string) => computeGarmentPerformance(branchKey || undefined),
+  (branchKey: string, organizationId: string) => computeGarmentPerformance(branchKey || undefined, organizationId),
   ["garment-performance"],
   { revalidate: REPORTS_REVALIDATE_SECONDS, tags: ["reports"] }
 );
 
 /** Powers Top Performing / Underperforming (Dead Stock) tables — spec sections 20-21. */
-export async function getGarmentPerformance(filter: ReportsFilter = {}): Promise<GarmentPerformanceRow[]> {
-  return getCachedGarmentPerformance(filter.branchId ?? "");
+export async function getGarmentPerformance(filter: ReportsFilter): Promise<GarmentPerformanceRow[]> {
+  return getCachedGarmentPerformance(filter.branchId ?? "", filter.organizationId);
 }
 
 export interface CategoryRevenueRow {
@@ -108,8 +109,8 @@ export interface CategoryRevenueRow {
   revenue: number;
 }
 
-async function computeRevenueByCategory(branchId?: string): Promise<CategoryRevenueRow[]> {
-  const branchWhere = branchId ? { branchId } : {};
+async function computeRevenueByCategory(branchId: string | undefined, organizationId: string): Promise<CategoryRevenueRow[]> {
+  const branchWhere = branchId ? { branchId } : { branch: { organizationId } };
   const garments = await db.garment.groupBy({
     by: ["category"],
     where: { ...branchWhere, isActive: true },
@@ -121,13 +122,13 @@ async function computeRevenueByCategory(branchId?: string): Promise<CategoryReve
 }
 
 const getCachedRevenueByCategory = unstable_cache(
-  (branchKey: string) => computeRevenueByCategory(branchKey || undefined),
+  (branchKey: string, organizationId: string) => computeRevenueByCategory(branchKey || undefined, organizationId),
   ["revenue-by-category"],
   { revalidate: REPORTS_REVALIDATE_SECONDS, tags: ["reports"] }
 );
 
-export async function getRevenueByCategory(filter: ReportsFilter = {}): Promise<CategoryRevenueRow[]> {
-  return getCachedRevenueByCategory(filter.branchId ?? "");
+export async function getRevenueByCategory(filter: ReportsFilter): Promise<CategoryRevenueRow[]> {
+  return getCachedRevenueByCategory(filter.branchId ?? "", filter.organizationId);
 }
 
 export interface TopCustomerRow {
@@ -137,8 +138,8 @@ export interface TopCustomerRow {
   totalSpend: number;
 }
 
-async function computeTopCustomers(branchId: string | undefined, limit: number): Promise<TopCustomerRow[]> {
-  const branchWhere = branchId ? { branchId } : {};
+async function computeTopCustomers(branchId: string | undefined, organizationId: string, limit: number): Promise<TopCustomerRow[]> {
+  const branchWhere = branchId ? { branchId } : { branch: { organizationId } };
   const grouped = await db.booking.groupBy({
     by: ["customerId"],
     where: branchWhere,
@@ -163,13 +164,13 @@ async function computeTopCustomers(branchId: string | undefined, limit: number):
 }
 
 const getCachedTopCustomers = unstable_cache(
-  (branchKey: string, limit: number) => computeTopCustomers(branchKey || undefined, limit),
+  (branchKey: string, organizationId: string, limit: number) => computeTopCustomers(branchKey || undefined, organizationId, limit),
   ["top-customers"],
   { revalidate: REPORTS_REVALIDATE_SECONDS, tags: ["reports"] }
 );
 
-export async function getTopCustomers(filter: ReportsFilter = {}, limit = 8): Promise<TopCustomerRow[]> {
-  return getCachedTopCustomers(filter.branchId ?? "", limit);
+export async function getTopCustomers(filter: ReportsFilter, limit = 8): Promise<TopCustomerRow[]> {
+  return getCachedTopCustomers(filter.branchId ?? "", filter.organizationId, limit);
 }
 
 export interface ReportsSummary {
@@ -187,8 +188,8 @@ export interface ReportsSummary {
 const DEAD_STOCK_IDLE_DAYS = 60;
 const DEAD_STOCK_MAX_RENTALS = 3;
 
-async function computeReportsSummary(branchId?: string): Promise<ReportsSummary> {
-  const branchWhere = branchId ? { branchId } : {};
+async function computeReportsSummary(branchId: string | undefined, organizationId: string): Promise<ReportsSummary> {
+  const branchWhere = branchId ? { branchId } : { branch: { organizationId } };
   const [garments, damageAgg, performance] = await Promise.all([
     db.garment.findMany({
       where: { ...branchWhere, isActive: true },
@@ -206,7 +207,7 @@ async function computeReportsSummary(branchId?: string): Promise<ReportsSummary>
       _count: { _all: true },
       _sum: { amount: true },
     }),
-    computeGarmentPerformance(branchId),
+    computeGarmentPerformance(branchId, organizationId),
   ]);
 
   const rois = performance.filter((g) => g.roi !== null).map((g) => g.roi as number);
@@ -228,13 +229,13 @@ async function computeReportsSummary(branchId?: string): Promise<ReportsSummary>
 }
 
 const getCachedReportsSummary = unstable_cache(
-  (branchKey: string) => computeReportsSummary(branchKey || undefined),
+  (branchKey: string, organizationId: string) => computeReportsSummary(branchKey || undefined, organizationId),
   ["reports-summary"],
   { revalidate: REPORTS_REVALIDATE_SECONDS, tags: ["reports"] }
 );
 
-export async function getReportsSummary(filter: ReportsFilter = {}): Promise<ReportsSummary> {
-  return getCachedReportsSummary(filter.branchId ?? "");
+export async function getReportsSummary(filter: ReportsFilter): Promise<ReportsSummary> {
+  return getCachedReportsSummary(filter.branchId ?? "", filter.organizationId);
 }
 
 export { DEAD_STOCK_IDLE_DAYS, DEAD_STOCK_MAX_RENTALS };

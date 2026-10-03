@@ -11,7 +11,7 @@ export default async function NewStaffPage() {
   if (!session?.user || !can(session.user.role, "staff", "create")) {
     redirect("/dashboard/staff");
   }
-  const branches = await getCachedBranches();
+  const branches = await getCachedBranches(session!.user.organizationId!);
 
   return (
     <div className="max-w-2xl space-y-6">

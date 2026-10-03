@@ -14,12 +14,12 @@ export default async function NewTransferPage() {
 
   const [garments, branches] = await Promise.all([
     db.garment.findMany({
-      where: { isActive: true },
+      where: { isActive: true, branch: { organizationId: session.user.organizationId ?? "" } },
       include: { branch: true },
       orderBy: { sku: "asc" },
       take: 200,
     }),
-    getCachedBranches(),
+    getCachedBranches(session!.user.organizationId!),
   ]);
 
   return (

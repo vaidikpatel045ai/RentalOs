@@ -17,8 +17,15 @@ export const getCachedBranchById = unstable_cache(
   { revalidate: BRANCHES_REVALIDATE_SECONDS, tags: ["branches"] }
 );
 
+/**
+ * Scoped to one organization — an OWNER's "all branches" means all branches
+ * in *their* tenant, never literally every branch in the table. `organizationId`
+ * is a call argument, so Next automatically folds it into the cache key
+ * alongside the ["branches-list"] prefix — no risk of one tenant's branch
+ * list being served from another's cache entry.
+ */
 export const getCachedBranches = unstable_cache(
-  () => db.branch.findMany({ orderBy: { name: "asc" } }),
+  (organizationId: string) => db.branch.findMany({ where: { organizationId }, orderBy: { name: "asc" } }),
   ["branches-list"],
   { revalidate: BRANCHES_REVALIDATE_SECONDS, tags: ["branches"] }
 );

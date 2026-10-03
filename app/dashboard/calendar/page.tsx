@@ -21,9 +21,10 @@ export default async function CalendarPage({
   const rangeEnd = endOfMonth(month);
 
   const branchId = isOwner ? branchIdParam : (session?.user.branchId ?? undefined);
+  const organizationId = session!.user.organizationId!;
   const [events, branches] = await Promise.all([
-    getCalendarEvents(rangeStart, rangeEnd, branchId),
-    isOwner ? getCachedBranches() : Promise.resolve([]),
+    getCalendarEvents(rangeStart, rangeEnd, branchId, organizationId),
+    isOwner ? getCachedBranches(organizationId) : Promise.resolve([]),
   ]);
 
   const filters: FilterConfig[] = isOwner

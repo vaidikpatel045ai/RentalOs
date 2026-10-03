@@ -25,13 +25,19 @@ export default async function PackagesPage({
   const canManage = Boolean(session?.user && can(session.user.role, "packages", "update"));
   const canCreate = Boolean(session?.user && can(session.user.role, "packages", "create"));
 
-  const branchWhere = session?.user.branchId && !isOwner ? { branchId: session.user.branchId } : branchId ? { branchId } : {};
+  const branches = isOwner ? await getCachedBranches(session!.user.organizationId!) : [];
+  const allowedBranchIds = branches.map((b) => b.id);
+  const branchWhere = session?.user.branchId && !isOwner
+    ? { branchId: session.user.branchId }
+    : branchId && allowedBranchIds.includes(branchId)
+      ? { branchId }
+      : { branchId: { in: allowedBranchIds } };
   const where = {
     ...branchWhere,
     ...(q ? { name: { contains: q, mode: "insensitive" as const } } : {}),
   };
 
-  const [packages, totalCount, branches] = await Promise.all([
+  const [packages, totalCount] = await Promise.all([
     db.package.findMany({
       where,
       include: { branch: true, items: true },
@@ -40,7 +46,6 @@ export default async function PackagesPage({
       take,
     }),
     db.package.count({ where }),
-    isOwner ? getCachedBranches() : Promise.resolve([]),
   ]);
 
   const filters: FilterConfig[] = isOwner

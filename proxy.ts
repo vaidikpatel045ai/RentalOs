@@ -26,7 +26,7 @@ export default auth((req) => {
   const role = req.auth?.user?.role;
 
   const isLoginPage = pathname === "/login";
-  const isProtected = pathname.startsWith("/dashboard") || pathname.startsWith("/portal");
+  const isProtected = pathname.startsWith("/dashboard") || pathname.startsWith("/portal") || pathname.startsWith("/admin");
 
   if (isLoginPage) {
     if (isAuthed && role) {
@@ -45,6 +45,10 @@ export default auth((req) => {
     return NextResponse.redirect(loginUrl);
   }
 
+  if (pathname.startsWith("/admin") && role !== "PLATFORM_ADMIN") {
+    return NextResponse.redirect(new URL(homeRouteForRole(role), req.nextUrl));
+  }
+
   if (pathname.startsWith("/dashboard") && !ADMIN_SHELL_ROLES.includes(role)) {
     return NextResponse.redirect(new URL(homeRouteForRole(role), req.nextUrl));
   }
@@ -60,5 +64,5 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/portal/:path*", "/login"],
+  matcher: ["/dashboard/:path*", "/portal/:path*", "/admin/:path*", "/login"],
 };

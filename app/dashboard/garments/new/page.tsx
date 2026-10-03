@@ -11,7 +11,7 @@ export default async function NewGarmentPage() {
   if (!session?.user || !can(session.user.role, "garments", "create")) {
     redirect("/dashboard/garments");
   }
-  const branches = await getCachedBranches();
+  const branches = await getCachedBranches(session!.user.organizationId!);
 
   return (
     <div className="max-w-3xl space-y-6">

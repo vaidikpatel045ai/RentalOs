@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { resolveBranchWhere } from "@/lib/tenant";
 
 // Lightweight garment picker feed for the booking wizard. Deliberately not
 // filtered to currentStatus AVAILABLE only — a garment can be safely booked
@@ -13,11 +14,12 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q")?.trim();
   const branchId = searchParams.get("branchId") ?? undefined;
+  const branchWhere = await resolveBranchWhere(session.user, branchId);
 
   const garments = await db.garment.findMany({
     where: {
       isActive: true,
-      ...(branchId ? { branchId } : {}),
+      ...branchWhere,
       ...(q
         ? {
             OR: [

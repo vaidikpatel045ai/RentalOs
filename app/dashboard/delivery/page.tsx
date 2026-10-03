@@ -25,7 +25,13 @@ export default async function DeliveryPage({
   const { page, pageSize, skip, take } = parsePagination(paginationParams);
   const session = await auth();
   const isOwner = session?.user.role === "OWNER";
-  const branchWhere = session?.user.branchId && !isOwner ? { booking: { branchId: session.user.branchId } } : branchId ? { booking: { branchId } } : {};
+  const branches = isOwner ? await getCachedBranches(session!.user.organizationId!) : [];
+  const allowedBranchIds = branches.map((b) => b.id);
+  const branchWhere = session?.user.branchId && !isOwner
+    ? { booking: { branchId: session.user.branchId } }
+    : branchId && allowedBranchIds.includes(branchId)
+      ? { booking: { branchId } }
+      : { booking: { branchId: { in: allowedBranchIds } } };
 
   const where = {
     ...branchWhere,
@@ -33,7 +39,7 @@ export default async function DeliveryPage({
     ...(type ? { type: type as DeliveryMethod } : {}),
   };
 
-  const [jobs, totalCount, branches] = await Promise.all([
+  const [jobs, totalCount] = await Promise.all([
     db.deliveryJob.findMany({
       where,
       include: { booking: { include: { customer: true } }, assignedDriver: true },
@@ -42,7 +48,6 @@ export default async function DeliveryPage({
       take,
     }),
     db.deliveryJob.count({ where }),
-    isOwner ? getCachedBranches() : Promise.resolve([]),
   ]);
 
   const filters: FilterConfig[] = [

@@ -11,6 +11,7 @@ import type { ActionState } from "@/lib/actions/customer-actions";
 export async function createBranch(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const session = await auth();
   if (!session?.user) return { error: "Not authenticated" };
+  if (!session.user.organizationId) return { error: "No organization on this account." };
   const permissionMsg = permissionError(session.user.role, "branches", "create");
   if (permissionMsg) return { error: permissionMsg };
 
@@ -26,6 +27,7 @@ export async function createBranch(_prev: ActionState, formData: FormData): Prom
   await db.branch.create({
     data: {
       ...parsed.data,
+      organizationId: session.user.organizationId,
       city: parsed.data.city || null,
       stateOrRegion: parsed.data.stateOrRegion || null,
       addressLine1: parsed.data.addressLine1 || null,

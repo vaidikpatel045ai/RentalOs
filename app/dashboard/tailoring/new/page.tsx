@@ -10,7 +10,7 @@ export default async function NewTailoringJobPage() {
   if (!session?.user || !can(session.user.role, "tailoring", "create")) {
     redirect("/dashboard/tailoring");
   }
-  const branches = await getCachedBranches();
+  const branches = await getCachedBranches(session!.user.organizationId!);
 
   return (
     <div className="max-w-2xl space-y-6">

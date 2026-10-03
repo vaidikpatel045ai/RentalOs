@@ -5,6 +5,7 @@ import Link from "next/link";
 import { authenticate, type LoginState } from "@/lib/actions/auth-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 
 const initialState: LoginState = {};
@@ -44,10 +45,9 @@ export default function LoginPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="password">Password</Label>
-              <Input
+              <PasswordInput
                 id="password"
                 name="password"
-                type="password"
                 autoComplete="current-password"
                 required
                 placeholder="••••••••"

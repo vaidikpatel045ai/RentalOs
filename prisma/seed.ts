@@ -8,6 +8,8 @@ const db = new PrismaClient();
 const DEMO_PASSWORD = "Password123!";
 
 const TABLES = [
+  "organizations",
+  "plans",
   "branches",
   "branch_settings",
   "users",
@@ -57,9 +59,15 @@ async function main() {
 
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
 
+  // ── Organization (tenant) ───────────────────────────────────────────────
+  const organization = await db.organization.create({
+    data: { name: "Demo Boutique", status: "ACTIVE" },
+  });
+
   // ── Branches ────────────────────────────────────────────────────────────
   const dubai = await db.branch.create({
     data: {
+      organizationId: organization.id,
       name: "Bridal Rental OS — Dubai",
       code: "DXB",
       country: "AE",
@@ -87,6 +95,7 @@ async function main() {
 
   const abuDhabi = await db.branch.create({
     data: {
+      organizationId: organization.id,
       name: "Bridal Rental OS — Abu Dhabi",
       code: "AUH",
       country: "AE",
@@ -106,6 +115,7 @@ async function main() {
 
   const sharjah = await db.branch.create({
     data: {
+      organizationId: organization.id,
       name: "Bridal Rental OS — Sharjah",
       code: "SHJ",
       country: "AE",
@@ -140,6 +150,7 @@ async function main() {
         email: opts.email,
         passwordHash,
         role: opts.role,
+        organizationId: organization.id,
         branchId: opts.branchId,
         staffProfile: opts.employeeCode
           ? { create: { employeeCode: opts.employeeCode, title: opts.title } }

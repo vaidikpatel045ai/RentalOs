@@ -25,7 +25,13 @@ export default async function BookingsPage({
   const { page, pageSize, skip, take } = parsePagination(paginationParams);
   const session = await auth();
   const isOwner = session?.user.role === "OWNER";
-  const branchWhere = session?.user.branchId && !isOwner ? { branchId: session.user.branchId } : branchId ? { branchId } : {};
+  const branches = isOwner ? await getCachedBranches(session!.user.organizationId!) : [];
+  const allowedBranchIds = branches.map((b) => b.id);
+  const branchWhere = session?.user.branchId && !isOwner
+    ? { branchId: session.user.branchId }
+    : branchId && allowedBranchIds.includes(branchId)
+      ? { branchId }
+      : { branchId: { in: allowedBranchIds } };
 
   const where = {
     ...branchWhere,
@@ -42,7 +48,7 @@ export default async function BookingsPage({
       : {}),
   };
 
-  const [bookings, totalCount, branches] = await Promise.all([
+  const [bookings, totalCount] = await Promise.all([
     db.booking.findMany({
       where,
       include: { customer: true, items: { include: { garment: true } }, branch: true },
@@ -51,7 +57,6 @@ export default async function BookingsPage({
       take,
     }),
     db.booking.count({ where }),
-    isOwner ? getCachedBranches() : Promise.resolve([]),
   ]);
 
   const filters: FilterConfig[] = [

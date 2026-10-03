@@ -37,7 +37,13 @@ export default async function PaymentsPage({
   const depositsPagination = parsePagination({ page: depositsPage, pageSize: depositsPageSize });
   const session = await auth();
   const isOwner = session?.user.role === "OWNER";
-  const branchWhere = session?.user.branchId && !isOwner ? { booking: { branchId: session.user.branchId } } : branchId ? { booking: { branchId } } : {};
+  const branches = isOwner ? await getCachedBranches(session!.user.organizationId!) : [];
+  const allowedBranchIds = branches.map((b) => b.id);
+  const branchWhere = session?.user.branchId && !isOwner
+    ? { booking: { branchId: session.user.branchId } }
+    : branchId && allowedBranchIds.includes(branchId)
+      ? { booking: { branchId } }
+      : { booking: { branchId: { in: allowedBranchIds } } };
 
   const paymentsWhere = {
     ...branchWhere,
@@ -49,7 +55,7 @@ export default async function PaymentsPage({
     ...(depositStatus ? { status: depositStatus as DepositStatus } : {}),
   };
 
-  const [payments, paymentsTotal, deposits, depositsTotal, branches, totalCollectedAgg, depositsHeldAgg] = await Promise.all([
+  const [payments, paymentsTotal, deposits, depositsTotal, totalCollectedAgg, depositsHeldAgg] = await Promise.all([
     db.payment.findMany({
       where: paymentsWhere,
       include: { booking: { include: { customer: true, branch: true } }, receivedBy: true },
@@ -66,7 +72,6 @@ export default async function PaymentsPage({
       take: depositsPagination.take,
     }),
     db.deposit.count({ where: depositsWhere }),
-    isOwner ? getCachedBranches() : Promise.resolve([]),
     db.payment.aggregate({ where: branchWhere, _sum: { amount: true } }),
     db.deposit.aggregate({ where: { booking: branchWhere.booking, status: "HELD" }, _sum: { amount: true } }),
   ]);

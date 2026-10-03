@@ -12,6 +12,7 @@ export default async function BranchesPage() {
   const canCreate = Boolean(session?.user && can(session.user.role, "branches", "create"));
 
   const branches = await db.branch.findMany({
+    where: { organizationId: session?.user.organizationId ?? "" },
     include: { _count: { select: { users: true, customers: true, garments: true, bookings: true } } },
     orderBy: { name: "asc" },
   });

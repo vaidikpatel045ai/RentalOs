@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { resolveBranchWhere } from "@/lib/tenant";
 
 export async function GET(request: Request) {
   const session = await auth();
@@ -9,10 +10,11 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q")?.trim();
   const branchId = searchParams.get("branchId") ?? undefined;
+  const branchWhere = await resolveBranchWhere(session.user, branchId);
 
   const customers = await db.customer.findMany({
     where: {
-      ...(branchId ? { branchId } : {}),
+      ...branchWhere,
       ...(q
         ? {
             OR: [

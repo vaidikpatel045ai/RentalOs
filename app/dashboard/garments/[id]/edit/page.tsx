@@ -15,7 +15,7 @@ export default async function EditGarmentPage({ params }: { params: Promise<{ id
   }
   const [garment, branches] = await Promise.all([
     db.garment.findUnique({ where: { id } }),
-    getCachedBranches(),
+    getCachedBranches(session!.user.organizationId!),
   ]);
   if (!garment) notFound();
 

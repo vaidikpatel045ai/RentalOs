@@ -7,13 +7,18 @@ import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookingStatusBadge, PaymentStatusBadge } from "@/components/domain/status-badge";
+import { getCachedBranches } from "@/lib/queries/branches";
 import { formatMoney } from "@/lib/currency";
 
 export default async function SalesDashboardPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const branchWhere = session.user.branchId ? { branchId: session.user.branchId } : {};
+  // Sales always has a branchId in practice — this org-wide fallback only
+  // matters for the unusual case of a Sales account with none assigned.
+  const branchWhere = session.user.branchId
+    ? { branchId: session.user.branchId }
+    : { branchId: { in: (await getCachedBranches(session.user.organizationId ?? "")).map((b) => b.id) } };
 
   const [todayAppointments, recentBookings] = await Promise.all([
     db.appointment.findMany({

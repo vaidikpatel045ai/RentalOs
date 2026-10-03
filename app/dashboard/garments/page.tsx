@@ -24,7 +24,13 @@ export default async function GarmentsPage({
   const { page, pageSize, skip, take } = parsePagination(paginationParams);
   const session = await auth();
   const isOwner = session?.user.role === "OWNER";
-  const branchWhere = session?.user.branchId && !isOwner ? { branchId: session.user.branchId } : branchId ? { branchId } : {};
+  const branches = isOwner ? await getCachedBranches(session!.user.organizationId!) : [];
+  const allowedBranchIds = branches.map((b) => b.id);
+  const branchWhere = session?.user.branchId && !isOwner
+    ? { branchId: session.user.branchId }
+    : branchId && allowedBranchIds.includes(branchId)
+      ? { branchId }
+      : { branchId: { in: allowedBranchIds } };
 
   // Deleted (archived) garments are hidden everywhere by default — the
   // whole point of "delete" — but stay reachable via Status: Archived so
@@ -45,7 +51,7 @@ export default async function GarmentsPage({
       : {}),
   };
 
-  const [garments, totalCount, branches] = await Promise.all([
+  const [garments, totalCount] = await Promise.all([
     db.garment.findMany({
       where,
       include: { images: { where: { isPrimary: true }, take: 1 }, branch: true },
@@ -54,7 +60,6 @@ export default async function GarmentsPage({
       take,
     }),
     db.garment.count({ where }),
-    isOwner ? getCachedBranches() : Promise.resolve([]),
   ]);
 
   const filters: FilterConfig[] = [

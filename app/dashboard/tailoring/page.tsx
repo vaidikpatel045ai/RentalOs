@@ -26,7 +26,13 @@ export default async function TailoringPage({
   const { page, pageSize, skip, take } = parsePagination(paginationParams);
   const session = await auth();
   const isOwner = session?.user.role === "OWNER";
-  const branchWhere = session?.user.branchId && !isOwner ? { garment: { branchId: session.user.branchId } } : branchId ? { garment: { branchId } } : {};
+  const branches = isOwner ? await getCachedBranches(session!.user.organizationId!) : [];
+  const allowedBranchIds = branches.map((b) => b.id);
+  const branchWhere = session?.user.branchId && !isOwner
+    ? { garment: { branchId: session.user.branchId } }
+    : branchId && allowedBranchIds.includes(branchId)
+      ? { garment: { branchId } }
+      : { garment: { branchId: { in: allowedBranchIds } } };
 
   const where = {
     ...branchWhere,
@@ -34,7 +40,7 @@ export default async function TailoringPage({
     ...(priority ? { priority: priority as Priority } : {}),
   };
 
-  const [jobs, totalCount, branches] = await Promise.all([
+  const [jobs, totalCount] = await Promise.all([
     db.tailoringJob.findMany({
       where,
       include: { garment: true, customer: true, assignedTo: true },
@@ -43,7 +49,6 @@ export default async function TailoringPage({
       take,
     }),
     db.tailoringJob.count({ where }),
-    isOwner ? getCachedBranches() : Promise.resolve([]),
   ]);
 
   const filters: FilterConfig[] = [

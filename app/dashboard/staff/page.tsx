@@ -27,7 +27,16 @@ export default async function StaffPage({
   const isOwner = session?.user.role === "OWNER";
   const canCreate = Boolean(session?.user && can(session.user.role, "staff", "create"));
   const canEdit = Boolean(session?.user && can(session.user.role, "staff", "update"));
-  const branchWhere = session?.user.branchId && !isOwner ? { branchId: session.user.branchId } : branchId ? { branchId } : {};
+  const branches = isOwner ? await getCachedBranches(session!.user.organizationId!) : [];
+  const allowedBranchIds = branches.map((b) => b.id);
+  // User has a direct organizationId (not just via branch) specifically so
+  // branchId-less accounts like OWNER still show up in their own org's
+  // staff list — {branchId: {in: [...]}} would otherwise exclude them.
+  const branchWhere = session?.user.branchId && !isOwner
+    ? { branchId: session.user.branchId }
+    : branchId && allowedBranchIds.includes(branchId)
+      ? { branchId }
+      : { organizationId: session?.user.organizationId };
 
   const where = {
     role: role ? (role as Role) : { not: "CUSTOMER" as const },
@@ -35,7 +44,7 @@ export default async function StaffPage({
     ...(q ? { name: { contains: q, mode: "insensitive" as const } } : {}),
   };
 
-  const [users, totalCount, branches] = await Promise.all([
+  const [users, totalCount] = await Promise.all([
     db.user.findMany({
       where,
       include: { branch: true, staffProfile: true },
@@ -44,7 +53,6 @@ export default async function StaffPage({
       take,
     }),
     db.user.count({ where }),
-    isOwner ? getCachedBranches() : Promise.resolve([]),
   ]);
 
   const filters: FilterConfig[] = [

@@ -190,6 +190,8 @@ export function permissionError(role: Role, resource: Resource, action: Action):
 /** Where a role lands after login. */
 export function homeRouteForRole(role: Role): string {
   switch (role) {
+    case "PLATFORM_ADMIN":
+      return "/admin";
     case "OWNER":
       return "/dashboard/owner";
     case "MANAGER":

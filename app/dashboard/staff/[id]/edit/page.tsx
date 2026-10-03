@@ -17,7 +17,7 @@ export default async function EditStaffPage({ params }: { params: Promise<{ id: 
 
   const [user, branches] = await Promise.all([
     db.user.findUnique({ where: { id }, include: { staffProfile: true } }),
-    getCachedBranches(),
+    getCachedBranches(session!.user.organizationId!),
   ]);
   if (!user || user.role === "CUSTOMER") notFound();
 

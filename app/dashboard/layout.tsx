@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getCachedBranchById } from "@/lib/queries/branches";
 import { getUnreadNotificationCount, getRecentNotifications } from "@/lib/queries/notifications";
+import { getOrganizationForUser, isOrganizationActive } from "@/lib/tenant";
 import { AppSidebar } from "@/components/domain/app-sidebar";
 import { AppTopbar } from "@/components/domain/app-topbar";
 
@@ -9,6 +10,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const session = await auth();
   if (!session?.user) {
     redirect("/login");
+  }
+
+  const organization = await getOrganizationForUser(session.user.organizationId);
+  if (!isOrganizationActive(organization)) {
+    redirect("/suspended");
   }
 
   // Runs on every dashboard navigation for every branch-scoped user — the

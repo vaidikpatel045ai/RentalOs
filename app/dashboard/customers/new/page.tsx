@@ -6,7 +6,7 @@ import { createCustomer } from "@/lib/actions/customer-actions";
 
 export default async function NewCustomerPage() {
   const session = await auth();
-  const branches = await getCachedBranches();
+  const branches = await getCachedBranches(session!.user.organizationId!);
 
   return (
     <div className="max-w-3xl space-y-6">

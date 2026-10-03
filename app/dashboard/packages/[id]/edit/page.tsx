@@ -16,7 +16,7 @@ export default async function EditPackagePage({ params }: { params: Promise<{ id
   }
   const [pkg, branches] = await Promise.all([
     db.package.findUnique({ where: { id }, include: { items: { orderBy: { id: "asc" } } } }),
-    getCachedBranches(),
+    getCachedBranches(session!.user.organizationId!),
   ]);
   if (!pkg) notFound();
 

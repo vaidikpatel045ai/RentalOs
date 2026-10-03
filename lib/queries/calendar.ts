@@ -11,10 +11,15 @@ export interface CalendarEvent {
 
 type CalendarEventCached = Omit<CalendarEvent, "date"> & { date: string };
 
-async function computeCalendarEvents(rangeStartIso: string, rangeEndIso: string, branchId?: string): Promise<CalendarEventCached[]> {
+async function computeCalendarEvents(
+  rangeStartIso: string,
+  rangeEndIso: string,
+  branchId: string | undefined,
+  organizationId: string
+): Promise<CalendarEventCached[]> {
   const rangeStart = new Date(rangeStartIso);
   const rangeEnd = new Date(rangeEndIso);
-  const branchWhere = branchId ? { branchId } : {};
+  const branchWhere = branchId ? { branchId } : { branch: { organizationId } };
 
   const [appointments, pickups, returns] = await Promise.all([
     db.appointment.findMany({
@@ -66,7 +71,12 @@ const getCachedCalendarEvents = unstable_cache(computeCalendarEvents, ["calendar
   tags: ["calendar"],
 });
 
-export async function getCalendarEvents(rangeStart: Date, rangeEnd: Date, branchId?: string): Promise<CalendarEvent[]> {
-  const rows = await getCachedCalendarEvents(rangeStart.toISOString(), rangeEnd.toISOString(), branchId);
+export async function getCalendarEvents(
+  rangeStart: Date,
+  rangeEnd: Date,
+  branchId: string | undefined,
+  organizationId: string
+): Promise<CalendarEvent[]> {
+  const rows = await getCachedCalendarEvents(rangeStart.toISOString(), rangeEnd.toISOString(), branchId, organizationId);
   return rows.map((r) => ({ ...r, date: new Date(r.date) }));
 }

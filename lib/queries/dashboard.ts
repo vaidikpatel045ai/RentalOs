@@ -11,9 +11,12 @@ import {
   addDays,
 } from "date-fns";
 
-/** Optional branch scoping — Owner passes undefined to see all branches. */
+/** Branch scoping is optional (Owner passes undefined to see every branch in
+ * their org); organizationId is not — it's what "every branch" actually
+ * means once more than one tenant exists. */
 export interface DashboardFilter {
   branchId?: string;
+  organizationId: string;
 }
 
 /**
@@ -38,8 +41,8 @@ const REVENUE_PAYMENT_TYPES: PaymentType[] = [
   "DAMAGE_CHARGE",
 ];
 
-async function computeOwnerDashboardData(branchId?: string) {
-  const branchWhere = branchId ? { branchId } : {};
+async function computeOwnerDashboardData(branchId: string | undefined, organizationId: string) {
+  const branchWhere = branchId ? { branchId } : { branch: { organizationId } };
   const now = new Date();
   const todayStart = startOfDay(now);
   const todayEnd = endOfDay(now);
@@ -201,15 +204,13 @@ async function computeOwnerDashboardData(branchId?: string) {
 }
 
 const getCachedOwnerDashboardData = unstable_cache(
-  (branchKey: string) => computeOwnerDashboardData(branchKey || undefined),
+  (branchKey: string, organizationId: string) => computeOwnerDashboardData(branchKey || undefined, organizationId),
   ["owner-dashboard-data"],
   { revalidate: DASHBOARD_REVALIDATE_SECONDS, tags: ["dashboard"] }
 );
 
-/** Public entry point — same signature as before caching was added, so
- * every call site (Owner/Manager dashboard pages) needed no changes. */
-export async function getOwnerDashboardData(filter: DashboardFilter = {}) {
-  return getCachedOwnerDashboardData(filter.branchId ?? "");
+export async function getOwnerDashboardData(filter: DashboardFilter) {
+  return getCachedOwnerDashboardData(filter.branchId ?? "", filter.organizationId);
 }
 
 export interface AtRiskItem {
@@ -236,8 +237,8 @@ type AtRiskItemCached = Omit<AtRiskItem, "returnDate" | "nextBookingStart"> & {
 };
 
 /** Powers the Owner dashboard "AT RISK" panel (spec section 5). */
-async function computeAtRiskBookings(branchId?: string): Promise<AtRiskItemCached[]> {
-  const branchWhere = branchId ? { branchId } : {};
+async function computeAtRiskBookings(branchId: string | undefined, organizationId: string): Promise<AtRiskItemCached[]> {
+  const branchWhere = branchId ? { branchId } : { branch: { organizationId } };
   const now = new Date();
   const horizon = addDays(now, 3);
 
@@ -309,13 +310,13 @@ async function computeAtRiskBookings(branchId?: string): Promise<AtRiskItemCache
 }
 
 const getCachedAtRiskBookings = unstable_cache(
-  (branchKey: string) => computeAtRiskBookings(branchKey || undefined),
+  (branchKey: string, organizationId: string) => computeAtRiskBookings(branchKey || undefined, organizationId),
   ["at-risk-bookings"],
   { revalidate: DASHBOARD_REVALIDATE_SECONDS, tags: ["dashboard"] }
 );
 
-export async function getAtRiskBookings(filter: DashboardFilter = {}): Promise<AtRiskItem[]> {
-  const rows = await getCachedAtRiskBookings(filter.branchId ?? "");
+export async function getAtRiskBookings(filter: DashboardFilter): Promise<AtRiskItem[]> {
+  const rows = await getCachedAtRiskBookings(filter.branchId ?? "", filter.organizationId);
   return rows.map((r) => ({
     ...r,
     returnDate: new Date(r.returnDate),
