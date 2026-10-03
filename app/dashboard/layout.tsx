@@ -12,18 +12,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect("/login");
   }
 
-  const organization = await getOrganizationForUser(session.user.organizationId);
-  if (!isOrganizationActive(organization)) {
-    redirect("/suspended");
-  }
-
-  // Runs on every dashboard navigation for every branch-scoped user — the
-  // highest-frequency branch query in the app. Cached (see lib/queries/branches.ts).
-  const [branch, unreadCount, notifications] = await Promise.all([
+  // Runs on every dashboard navigation — all in parallel, one DB round trip total.
+  const [organization, branch, unreadCount, notifications] = await Promise.all([
+    getOrganizationForUser(session.user.organizationId),
     session.user.branchId ? getCachedBranchById(session.user.branchId) : Promise.resolve(null),
     getUnreadNotificationCount(session.user.id),
     getRecentNotifications(session.user.id),
   ]);
+  if (!isOrganizationActive(organization)) {
+    redirect("/suspended");
+  }
 
   return (
     <div className="flex min-h-svh">

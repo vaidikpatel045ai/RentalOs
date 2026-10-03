@@ -18,7 +18,11 @@ export default async function PortalLayout({ children }: { children: React.React
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const organization = await getOrganizationForUser(session.user.organizationId);
+  const [organization, unreadCount, notifications] = await Promise.all([
+    getOrganizationForUser(session.user.organizationId),
+    getUnreadNotificationCount(session.user.id),
+    getRecentNotifications(session.user.id),
+  ]);
   if (!isOrganizationActive(organization)) {
     redirect("/suspended");
   }
@@ -30,10 +34,6 @@ export default async function PortalLayout({ children }: { children: React.React
     .slice(0, 2)
     .join("")
     .toUpperCase();
-  const [unreadCount, notifications] = await Promise.all([
-    getUnreadNotificationCount(session.user.id),
-    getRecentNotifications(session.user.id),
-  ]);
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
