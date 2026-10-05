@@ -15,6 +15,7 @@ import { DocumentsList } from "@/components/domain/documents-list";
 import { InvoiceActions } from "@/components/domain/invoice-actions";
 import { findAccessibleBooking } from "@/lib/invoices/invoices";
 import { isEmailConfigured } from "@/lib/email";
+import { countsTowardBalance } from "@/lib/payments";
 
 export default async function BookingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -39,6 +40,9 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
     db.invoice.findMany({ where: { bookingId: id }, orderBy: { version: "desc" }, take: 5 }),
   ]);
   if (!booking) notFound();
+  const depositReceived = booking.payments
+    .filter((p) => p.status === "COMPLETED" && !countsTowardBalance(p.type))
+    .reduce((sum, p) => sum + Number(p.amount), 0);
 
   const canManageDamage = Boolean(session?.user && can(session.user.role, "conditionReports", "create"));
   const canApproveDamage = Boolean(session?.user && can(session.user.role, "conditionReports", "update"));
@@ -181,12 +185,22 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
                 <Row label="Paid" value={formatMoney(booking.paidAmount, booking.branch.currency)} />
                 <Row label="Balance Due" value={formatMoney(booking.balanceDue, booking.branch.currency)} highlight />
               </div>
+              {Number(booking.depositAmount) > 0 && (
+                <p className="rounded-md bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+                  Security deposit of {formatMoney(booking.depositAmount, booking.branch.currency)} is held separately and
+                  isn&apos;t counted in Paid or Balance Due.{" "}
+                  {depositReceived > 0
+                    ? `${formatMoney(depositReceived, booking.branch.currency)} received.`
+                    : "Not received yet."}
+                </p>
+              )}
               {booking.payments.length > 0 && (
                 <div className="space-y-1 border-t border-border pt-3">
                   {booking.payments.map((p) => (
-                    <div key={p.id} className="flex justify-between text-xs text-muted-foreground">
+                    <div key={p.id} className="flex justify-between gap-2 text-xs text-muted-foreground">
                       <span>
-                        {p.type.replaceAll("_", " ")} · {p.method.replaceAll("_", " ")}
+                        {countsTowardBalance(p.type) ? p.type.replaceAll("_", " ") : "SECURITY DEPOSIT (held)"} ·{" "}
+                        {p.method.replaceAll("_", " ")}
                       </span>
                       <span>{formatMoney(p.amount, booking.branch.currency)}</span>
                     </div>
@@ -203,7 +217,14 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
               </CardHeader>
               <CardContent className="space-y-1 text-sm">
                 {booking.deposits.map((d) => (
-                  <Row key={d.id} label={d.status.replaceAll("_", " ")} value={formatMoney(d.amount, booking.branch.currency)} />
+                  <div key={d.id} className="space-y-1">
+                    <Row label="Required" value={formatMoney(d.amount, booking.branch.currency)} />
+                    <Row label="Received" value={formatMoney(depositReceived, booking.branch.currency)} />
+                    {Number(d.refundedAmount) > 0 && (
+                      <Row label="Refunded" value={formatMoney(d.refundedAmount, booking.branch.currency)} />
+                    )}
+                    <Row label="Status" value={d.status.replaceAll("_", " ")} />
+                  </div>
                 ))}
               </CardContent>
             </Card>

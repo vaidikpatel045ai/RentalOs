@@ -43,6 +43,8 @@ export default async function CustomerPortalPage() {
             include: { garment: { include: { images: { where: { isPrimary: true }, take: 1 } } } },
           },
           branch: { select: { name: true, phone: true, currency: true } },
+          // Only deposit payments: they're shown apart from what's been paid on the booking.
+          payments: { where: { status: "COMPLETED", type: "DEPOSIT" }, select: { amount: true } },
         },
         orderBy: { rentalStart: "desc" },
       },
@@ -186,6 +188,8 @@ export default async function CustomerPortalPage() {
               const total = Number(b.totalAmount);
               const paid = Number(b.paidAmount);
               const balance = Number(b.balanceDue);
+              const depositAmount = Number(b.depositAmount);
+              const depositReceived = b.payments.reduce((sum, p) => sum + Number(p.amount), 0);
               const paidPct = total > 0 ? Math.min(100, Math.round((paid / total) * 100)) : 100;
               const garments = b.items.map((i) => i.garment);
               return (
@@ -238,6 +242,17 @@ export default async function CustomerPortalPage() {
                     <p className="text-xs text-muted-foreground">
                       {formatMoney(paid, b.branch.currency)} paid of {formatMoney(total, b.branch.currency)}
                     </p>
+                    {depositAmount > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Refundable security deposit {formatMoney(depositAmount, b.branch.currency)}:{" "}
+                        {depositReceived >= depositAmount
+                          ? "received, returned after the garments come back"
+                          : depositReceived > 0
+                            ? `${formatMoney(depositReceived, b.branch.currency)} received, the rest due at pickup`
+                            : "due at pickup"}
+                        .
+                      </p>
+                    )}
                     {balance > 0 && b.branch.phone && (
                       <a
                         href={`tel:${b.branch.phone}`}
