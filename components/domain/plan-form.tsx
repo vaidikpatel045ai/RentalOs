@@ -25,7 +25,9 @@ export function PlanForm({
   const [billingInterval, setBillingInterval] = useState(defaultValues?.billingInterval ?? "MONTHLY");
   const form = useForm<PlanInput>({
     resolver: zodResolver(planSchema),
-    defaultValues: { currency: "AED", ...defaultValues },
+    // billingInterval must live in the form's own values (not only in local
+    // state), or validation sees it as missing and blocks every submit.
+    defaultValues: { currency: "AED", billingInterval: "MONTHLY", ...defaultValues },
   });
 
   function onSubmit(values: PlanInput) {
@@ -51,7 +53,13 @@ export function PlanForm({
         </div>
         <div className="space-y-1.5">
           <Label>Billing</Label>
-          <Select value={billingInterval} onValueChange={(v) => setBillingInterval(v as typeof billingInterval)}>
+          <Select
+            value={billingInterval}
+            onValueChange={(v) => {
+              setBillingInterval(v as typeof billingInterval);
+              form.setValue("billingInterval", v as typeof billingInterval, { shouldValidate: true });
+            }}
+          >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -63,6 +71,9 @@ export function PlanForm({
               ))}
             </SelectContent>
           </Select>
+          {form.formState.errors.billingInterval && (
+            <p className="text-xs text-destructive">{form.formState.errors.billingInterval.message}</p>
+          )}
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="price">Price</Label>
