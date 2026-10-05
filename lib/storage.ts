@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
-import { mkdir, writeFile } from "fs/promises";
+import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 
 /**
  * Storage adapter abstraction. Production should point this at an
@@ -21,6 +21,8 @@ export interface UploadResult {
 
 export interface StorageAdapter {
   uploadFile(file: Buffer, opts: { filename: string; contentType: string; folder: string }): Promise<UploadResult>;
+  /** Reads back a file previously stored under `key`. */
+  getFile(key: string): Promise<Buffer>;
 }
 
 class LocalDiskStorageAdapter implements StorageAdapter {
@@ -34,6 +36,13 @@ class LocalDiskStorageAdapter implements StorageAdapter {
     await mkdir(path.dirname(fullPath), { recursive: true });
     await writeFile(fullPath, file);
     return { url: `/uploads/${key}`, key };
+  }
+
+  async getFile(key: string): Promise<Buffer> {
+    const root = path.join(process.cwd(), "public", "uploads");
+    const fullPath = path.join(root, key);
+    if (!fullPath.startsWith(root + path.sep)) throw new Error("Invalid storage key");
+    return readFile(fullPath);
   }
 }
 
@@ -88,6 +97,12 @@ class S3StorageAdapter implements StorageAdapter {
     );
 
     return { url: `${this.publicBaseUrl}/${key}`, key };
+  }
+
+  async getFile(key: string): Promise<Buffer> {
+    const object = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
+    if (!object.Body) throw new Error(`Empty object: ${key}`);
+    return Buffer.from(await object.Body.transformToByteArray());
   }
 }
 

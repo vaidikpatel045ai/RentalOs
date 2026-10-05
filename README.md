@@ -21,6 +21,8 @@ Next.js 16 (App Router) · TypeScript (strict) · Tailwind CSS v4 · shadcn/ui �
    ```
    - `DATABASE_URL` — any Postgres instance (local, [Neon](https://neon.tech), [Supabase](https://supabase.com), RDS, etc).
    - `AUTH_SECRET` — generate with `openssl rand -base64 32`.
+   - `STORAGE_DRIVER=s3` plus `STORAGE_BUCKET`, `STORAGE_REGION`, `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY` — where uploads and booking invoices (PDF) are stored. Without them, files go to `public/uploads`.
+   - `RESEND_API_KEY` and `EMAIL_FROM` (optional) — turn on "Send to Customer → Email" for invoices. `EMAIL_FROM` must be an address on a domain verified in [Resend](https://resend.com); until then Resend only delivers to your own account email. WhatsApp sending needs no setup.
 
 3. **Run the migration and seed demo data**:
    ```bash

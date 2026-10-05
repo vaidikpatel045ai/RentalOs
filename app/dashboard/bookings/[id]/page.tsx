@@ -12,10 +12,17 @@ import { RecordPaymentDialog } from "@/components/domain/record-payment-dialog";
 import { DamageChargeDialog } from "@/components/domain/damage-charge-dialog";
 import { DamageChargeActions } from "@/components/domain/damage-charge-actions";
 import { DocumentsList } from "@/components/domain/documents-list";
+import { InvoiceActions } from "@/components/domain/invoice-actions";
+import { findAccessibleBooking } from "@/lib/invoices/invoices";
+import { isEmailConfigured } from "@/lib/email";
 
 export default async function BookingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [booking, documents] = await Promise.all([
+  const session = await auth();
+  // Another boutique's (or, for branch staff, another branch's) booking looks exactly like a missing one.
+  if (!session?.user || !(await findAccessibleBooking(session.user, id))) notFound();
+
+  const [booking, documents, invoices] = await Promise.all([
     db.booking.findUnique({
       where: { id },
       include: {
@@ -29,10 +36,10 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
       },
     }),
     db.document.findMany({ where: { bookingId: id }, orderBy: { createdAt: "desc" } }),
+    db.invoice.findMany({ where: { bookingId: id }, orderBy: { version: "desc" }, take: 5 }),
   ]);
   if (!booking) notFound();
 
-  const session = await auth();
   const canManageDamage = Boolean(session?.user && can(session.user.role, "conditionReports", "create"));
   const canApproveDamage = Boolean(session?.user && can(session.user.role, "conditionReports", "update"));
   const canManageDocuments = Boolean(session?.user && can(session.user.role, "documents", "create"));
@@ -120,6 +127,44 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
         </div>
 
         <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-heading text-base">Invoice</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <InvoiceActions
+                bookingId={booking.id}
+                customerEmail={booking.customer.email}
+                hasPhone={Boolean(booking.customer.whatsapp || booking.customer.phone)}
+                emailEnabled={isEmailConfigured()}
+                canSend={can(session.user.role, "bookings", "update")}
+              />
+              {invoices.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  The invoice is created the first time you download, print or send it, and saved to storage.
+                </p>
+              ) : (
+                <div className="space-y-1 border-t border-border pt-3">
+                  {invoices.map((inv, i) => (
+                    <a
+                      key={inv.id}
+                      href={`/api/invoices/${inv.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex justify-between gap-2 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      <span className="font-mono">
+                        {inv.invoiceNumber}
+                        {i === 0 ? " (latest)" : ""}
+                      </span>
+                      <span>{format(inv.createdAt, "d MMM yyyy, HH:mm")}</span>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader className="flex-row items-center justify-between">
               <CardTitle className="font-heading text-base">Payments</CardTitle>
