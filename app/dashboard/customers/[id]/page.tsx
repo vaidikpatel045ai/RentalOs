@@ -12,6 +12,8 @@ import { BookingStatusBadge, PaymentStatusBadge } from "@/components/domain/stat
 import { MeasurementFormDialog } from "@/components/domain/measurement-form-dialog";
 import { DocumentsList } from "@/components/domain/documents-list";
 import { addMeasurement } from "@/lib/actions/customer-actions";
+import { resetCustomerPassword } from "@/lib/actions/password-actions";
+import { ResetPasswordDialog } from "@/components/domain/reset-password-dialog";
 import { formatMoney } from "@/lib/currency";
 
 const MEASUREMENT_FIELDS: { key: string; label: string }[] = [
@@ -46,11 +48,21 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
       documents: { orderBy: { createdAt: "desc" } },
     },
   });
-  if (!customer) notFound();
+  const session = await auth();
+  // Another boutique's customer, or (for branch staff) another branch's, looks exactly like a missing one.
+  if (
+    !customer ||
+    !session?.user ||
+    customer.branch.organizationId !== session.user.organizationId ||
+    (session.user.role !== "OWNER" && session.user.branchId && customer.branchId !== session.user.branchId)
+  ) {
+    notFound();
+  }
 
   const latestMeasurement = customer.measurements.find((m) => m.isLatest);
-  const session = await auth();
-  const canManageDocuments = Boolean(session?.user && can(session.user.role, "documents", "create"));
+  const canManageDocuments = can(session.user.role, "documents", "create");
+  // Same rule as resetCustomerPassword: owner, or a manager (already limited to their branch above).
+  const canResetPassword = Boolean(customer.userId) && (session.user.role === "OWNER" || session.user.role === "MANAGER");
 
   return (
     <div className="space-y-6">
@@ -75,11 +87,20 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
             )}
           </div>
         </div>
-        <Button asChild variant="outline">
-          <Link href={`/dashboard/customers/${customer.id}/edit`}>
-            <Pencil className="size-4" /> Edit
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {canResetPassword && (
+            <ResetPasswordDialog
+              userName={`${customer.firstName} ${customer.lastName}`}
+              reset={resetCustomerPassword.bind(null, customer.id)}
+              label="Reset portal password"
+            />
+          )}
+          <Button asChild variant="outline">
+            <Link href={`/dashboard/customers/${customer.id}/edit`}>
+              <Pencil className="size-4" /> Edit
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">

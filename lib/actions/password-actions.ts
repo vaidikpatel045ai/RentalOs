@@ -85,6 +85,36 @@ export async function resetStaffPassword(userId: string): Promise<TemporaryPassw
   return result;
 }
 
+/** Owner or manager resets a customer's portal password (managers: their own branch's customers). */
+export async function resetCustomerPassword(customerId: string): Promise<TemporaryPasswordResult> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: "Not authenticated" };
+  if (session.user.role !== "OWNER" && session.user.role !== "MANAGER") {
+    return { ok: false, error: "Only the owner or a manager can reset a customer's password." };
+  }
+
+  const customer = await db.customer.findUnique({
+    where: { id: customerId },
+    include: { branch: { select: { organizationId: true } }, user: true },
+  });
+  const inScope =
+    customer &&
+    customer.branch.organizationId === session.user.organizationId &&
+    (session.user.role === "OWNER" || !session.user.branchId || customer.branchId === session.user.branchId);
+  if (!customer || !inScope) return { ok: false, error: "Customer not found." };
+  if (!customer.user || customer.user.role !== "CUSTOMER") {
+    return { ok: false, error: "This customer doesn't have a portal login." };
+  }
+
+  const result = await issueTemporaryPassword(
+    session.user,
+    { ...customer.user, phone: customer.whatsapp || customer.phone },
+    "PASSWORD_RESET_CUSTOMER"
+  );
+  revalidatePath(`/dashboard/customers/${customerId}`);
+  return result;
+}
+
 /** Platform Admin resets a boutique owner's password (the owner has nobody above them in the boutique). */
 export async function resetOwnerPassword(userId: string): Promise<TemporaryPasswordResult> {
   const session = await auth();
