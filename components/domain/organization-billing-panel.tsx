@@ -10,11 +10,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { updateOrganizationBilling, setOrganizationStatus, markOrganizationPaid } from "@/lib/actions/organization-actions";
 import { ORGANIZATION_STATUSES } from "@/lib/validations/organization";
 import { enumLabel } from "@/lib/format-enum";
-import type { Organization, Plan } from "@prisma/client";
+import type { OrganizationStatus } from "@prisma/client";
 
 const NO_PLAN = "__none__";
 
-export function OrganizationBillingPanel({ organization, plans }: { organization: Organization; plans: Plan[] }) {
+// Plain shapes only: Prisma Decimal fields (plan price, branch taxRate) can't
+// be passed from a server page to a client component.
+export interface BillingPanelOrganization {
+  id: string;
+  status: OrganizationStatus;
+  planId: string | null;
+  billingNotes: string | null;
+}
+export interface PlanOption {
+  id: string;
+  name: string;
+}
+
+export function OrganizationBillingPanel({ organization, plans }: { organization: BillingPanelOrganization; plans: PlanOption[] }) {
   const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState(organization.status);
   const [planId, setPlanId] = useState(organization.planId ?? NO_PLAN);

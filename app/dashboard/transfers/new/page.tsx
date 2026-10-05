@@ -15,7 +15,7 @@ export default async function NewTransferPage() {
   const [garments, branches] = await Promise.all([
     db.garment.findMany({
       where: { isActive: true, branch: { organizationId: session.user.organizationId ?? "" } },
-      include: { branch: true },
+      select: { id: true, sku: true, name: true, branchId: true, branch: { select: { name: true } } },
       orderBy: { sku: "asc" },
       take: 200,
     }),

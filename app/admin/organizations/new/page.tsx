@@ -16,7 +16,7 @@ export default async function NewOrganizationPage() {
           <CardTitle className="font-heading text-base">Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <OrganizationOnboardForm plans={plans} />
+          <OrganizationOnboardForm plans={plans.map((p) => ({ id: p.id, name: p.name }))} />
         </CardContent>
       </Card>
     </div>

@@ -10,11 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Plan } from "@prisma/client";
+import type { PlanOption } from "@/components/domain/organization-billing-panel";
 
 const NO_PLAN = "__none__";
 
-export function OrganizationOnboardForm({ plans }: { plans: Plan[] }) {
+export function OrganizationOnboardForm({ plans }: { plans: PlanOption[] }) {
   const [isPending, startTransition] = useTransition();
   const [planId, setPlanId] = useState(NO_PLAN);
   const form = useForm<OrganizationOnboardInput>({

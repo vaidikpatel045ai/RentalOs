@@ -37,7 +37,15 @@ export default async function OrganizationDetailPage({ params }: { params: Promi
             <CardTitle className="font-heading text-base">Billing</CardTitle>
           </CardHeader>
           <CardContent>
-            <OrganizationBillingPanel organization={organization} plans={plans} />
+            <OrganizationBillingPanel
+              organization={{
+                id: organization.id,
+                status: organization.status,
+                planId: organization.planId,
+                billingNotes: organization.billingNotes,
+              }}
+              plans={plans.map((p) => ({ id: p.id, name: p.name }))}
+            />
           </CardContent>
         </Card>
 

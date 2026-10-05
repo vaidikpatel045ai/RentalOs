@@ -10,9 +10,19 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Branch, Garment } from "@prisma/client";
+import type { Branch } from "@prisma/client";
 
-export function TransferForm({ garments, branches }: { garments: (Garment & { branch: Branch })[]; branches: Branch[] }) {
+// Plain shape only: Garment's price fields are Prisma Decimals, which can't
+// be passed from a server page to a client component.
+export interface TransferGarmentOption {
+  id: string;
+  sku: string;
+  name: string;
+  branchId: string;
+  branch: { name: string };
+}
+
+export function TransferForm({ garments, branches }: { garments: TransferGarmentOption[]; branches: Branch[] }) {
   const [isPending, startTransition] = useTransition();
   const form = useForm<TransferInput>({ resolver: zodResolver(transferSchema) });
   const [selectedGarmentId, setSelectedGarmentId] = useState<string | undefined>();
