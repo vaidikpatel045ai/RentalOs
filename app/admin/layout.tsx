@@ -16,7 +16,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="flex min-h-svh">
-      <aside className="hidden w-56 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
+      <aside className="sticky top-0 hidden h-svh w-56 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
         <div className="flex h-16 items-center border-b border-sidebar-border px-6">
           <span className="font-heading text-lg tracking-tight">Platform Admin</span>
         </div>
@@ -30,7 +30,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </nav>
       </aside>
       <div className="flex min-h-svh min-w-0 flex-1 flex-col">
-        <header className="flex h-16 items-center justify-between border-b border-border px-4 md:px-6">
+        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-4 md:px-6">
           <span className="font-heading text-lg tracking-tight md:hidden">Platform Admin</span>
           <div className="ml-auto flex items-center gap-3">
             <span className="text-sm text-muted-foreground">{session.user.email}</span>
@@ -41,7 +41,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </form>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto bg-background p-4 md:p-8">{children}</main>
+        <main className="flex-1 bg-background p-4 md:p-8">{children}</main>
       </div>
     </div>
   );

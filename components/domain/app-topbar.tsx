@@ -53,7 +53,7 @@ export function AppTopbar({
   const items = getNavItemsForRole(role);
 
   return (
-    <header className="flex h-16 items-center gap-4 border-b border-border bg-background px-4 md:px-6">
+    <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-4 border-b border-border bg-background px-4 md:px-6">
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetTrigger asChild>
           <Button variant="ghost" size="icon" className="md:hidden">

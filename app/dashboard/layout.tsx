@@ -35,7 +35,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           unreadCount={unreadCount}
           notifications={notifications}
         />
-        <main className="flex-1 overflow-y-auto bg-background p-4 md:p-8">{children}</main>
+        <main className="flex-1 bg-background p-4 md:p-8">{children}</main>
       </div>
     </div>
   );

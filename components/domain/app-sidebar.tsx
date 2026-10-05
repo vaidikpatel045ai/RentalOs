@@ -11,7 +11,7 @@ export function AppSidebar({ role }: { role: Role }) {
   const items = getNavItemsForRole(role);
 
   return (
-    <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
+    <aside className="sticky top-0 hidden h-svh w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
       <div className="flex h-16 items-center gap-2 border-b border-sidebar-border px-6">
         <span className="font-heading text-lg tracking-tight">Bridal Rental OS</span>
       </div>
