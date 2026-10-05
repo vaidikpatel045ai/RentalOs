@@ -5,6 +5,8 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { requireCan, permissionError } from "@/lib/permissions";
 import type { ActionState } from "@/lib/actions/customer-actions";
+import { bookingPaymentState, countsTowardBalance } from "@/lib/payments";
+import { findAccessibleBooking } from "@/lib/invoices/invoices";
 import type { PaymentType, TransactionMethod } from "@prisma/client";
 
 /**
@@ -22,8 +24,10 @@ export async function recordPayment(
   if (permissionMsg) return { error: permissionMsg };
 
   if (input.amount <= 0) return { error: "Amount must be greater than zero." };
+  if (!(await findAccessibleBooking(session.user, bookingId))) return { error: "Booking not found." };
 
   const booking = await db.booking.findUniqueOrThrow({ where: { id: bookingId } });
+  const isDeposit = !countsTowardBalance(input.type);
 
   await db.$transaction(async (tx) => {
     await tx.payment.create({
@@ -37,20 +41,25 @@ export async function recordPayment(
       },
     });
 
-    const newPaid = Number(booking.paidAmount) + input.amount;
-    const newBalance = Math.max(0, Number(booking.totalAmount) - newPaid);
-    const paymentStatus = newBalance <= 0 ? "PAID" : newPaid > 0 ? "PARTIALLY_PAID" : "UNPAID";
+    // A security deposit is held separately: it doesn't reduce the balance or
+    // make the booking "Paid". The booking is still touched so its invoice
+    // (which shows whether the deposit was received) regenerates.
+    const state = isDeposit
+      ? null
+      : bookingPaymentState(Number(booking.totalAmount), Number(booking.paidAmount) + input.amount);
 
     await tx.booking.update({
       where: { id: bookingId },
-      data: { paidAmount: newPaid, balanceDue: newBalance, paymentStatus },
+      data: state ?? { updatedAt: new Date() },
     });
 
     await tx.bookingEvent.create({
       data: {
         bookingId,
-        eventType: "PAYMENT_RECEIVED",
-        description: `${input.type.replaceAll("_", " ")} payment of ${input.amount} received via ${input.method.replaceAll("_", " ")}`,
+        eventType: isDeposit ? "DEPOSIT_RECEIVED" : "PAYMENT_RECEIVED",
+        description: isDeposit
+          ? `Security deposit of ${input.amount} received via ${input.method.replaceAll("_", " ")} (held, refundable)`
+          : `${input.type.replaceAll("_", " ")} payment of ${input.amount} received via ${input.method.replaceAll("_", " ")}`,
         actorUserId: session.user.id,
         actorRole: session.user.role,
       },
@@ -66,6 +75,7 @@ export async function updateBookingStatus(bookingId: string, status: "CONFIRMED"
   const session = await auth();
   if (!session?.user) throw new Error("Not authenticated");
   requireCan(session.user.role, "bookings", "update");
+  if (!(await findAccessibleBooking(session.user, bookingId))) throw new Error("Booking not found.");
 
   const booking = await db.booking.findUniqueOrThrow({ where: { id: bookingId } });
 
@@ -99,7 +109,8 @@ export async function refundDeposit(depositId: string, amount: number, reason?: 
   const permissionMsg = permissionError(session.user.role, "payments", "approve");
   if (permissionMsg) return { error: permissionMsg };
 
-  const deposit = await db.deposit.findUniqueOrThrow({ where: { id: depositId } });
+  const deposit = await db.deposit.findUnique({ where: { id: depositId } });
+  if (!deposit || !(await findAccessibleBooking(session.user, deposit.bookingId))) return { error: "Deposit not found." };
   if (amount <= 0 || amount > Number(deposit.amount) - Number(deposit.refundedAmount)) {
     return { error: "Refund amount must be between 0 and the remaining deposit balance." };
   }

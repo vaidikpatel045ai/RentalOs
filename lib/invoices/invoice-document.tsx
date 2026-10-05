@@ -26,7 +26,8 @@ export interface InvoiceView {
   bookingDetails: LabeledValue[];
   items: { sku: string; name: string; details: string; deposit: string; price: string }[];
   totals: { label: string; value: string; emphasis?: boolean }[];
-  deposit: string | null;
+  /** Held separately from the total; `status` says whether it's been received. */
+  deposit: { amount: string; status: string } | null;
   payments: { date: string; description: string; reference: string | null; amount: string }[];
   paid: string;
   balanceDue: string;
@@ -183,10 +184,10 @@ export function InvoiceDocument({ invoice }: { invoice: InvoiceView }) {
           <View style={styles.depositNote}>
             {invoice.deposit && (
               <View style={styles.depositBox}>
-                <Text style={[styles.strong, { marginBottom: 2 }]}>Security deposit: {invoice.deposit}</Text>
+                <Text style={[styles.strong, { marginBottom: 2 }]}>Security deposit: {invoice.deposit.amount}</Text>
+                <Text style={{ marginBottom: 2 }}>{invoice.deposit.status}</Text>
                 <Text style={styles.muted}>
-                  Refundable. Held separately from the invoice total and returned once the garments come back and pass
-                  inspection.
+                  Refundable. Not part of the invoice total, and returned once the garments come back and pass inspection.
                 </Text>
               </View>
             )}

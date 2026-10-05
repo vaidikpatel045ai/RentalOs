@@ -4,6 +4,7 @@ import { Prisma, type Role } from "@prisma/client";
 import { db } from "@/lib/db";
 import { getStorageAdapter } from "@/lib/storage";
 import { formatMoney } from "@/lib/currency";
+import { countsTowardBalance } from "@/lib/payments";
 import { enumLabel } from "@/lib/format-enum";
 import { InvoiceDocument, type InvoiceView } from "@/lib/invoices/invoice-document";
 
@@ -34,8 +35,9 @@ export async function findAccessibleBooking(user: SessionUser, bookingId: string
 const DATE = "EEE, d MMM yyyy";
 
 /** Invoices made before this date used an older, shorter layout; they're
- * treated as out of date so the next view or download produces the full one. */
-const LAYOUT_UPDATED_AT = new Date("2026-10-05T11:30:00.000Z");
+ * treated as out of date so the next view or download produces the current one
+ * (last bumped when deposits were separated from the booking balance). */
+const LAYOUT_UPDATED_AT = new Date("2026-10-05T16:30:00.000Z");
 
 async function loadInvoiceView(bookingId: string, invoiceNumber: string, issuedAt: Date): Promise<InvoiceView> {
   const b = await db.booking.findUniqueOrThrow({
@@ -62,6 +64,19 @@ async function loadInvoiceView(bookingId: string, invoiceNumber: string, issuedA
   /** Keeps only the rows that have a value. */
   const present = (rows: [string, string | null | undefined | false][]) =>
     rows.filter((r): r is [string, string] => Boolean(r[1])).map(([label, value]) => ({ label, value }));
+
+  // The deposit is held apart from the booking total: its payments are shown
+  // in the deposit box, not in "Payments received" (see lib/payments.ts).
+  const bookingPayments = b.payments.filter((p) => countsTowardBalance(p.type));
+  const depositPayments = b.payments.filter((p) => !countsTowardBalance(p.type));
+  const depositReceived = depositPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+  const lastDeposit = depositPayments.at(-1);
+  const depositStatus =
+    depositReceived <= 0
+      ? "Not yet received. Due at pickup."
+      : depositReceived >= Number(b.depositAmount)
+        ? `Received ${format(lastDeposit!.paidAt, "d MMM yyyy")} by ${enumLabel(lastDeposit!.method).toLowerCase()}.`
+        : `${money(depositReceived)} received so far; ${money(Number(b.depositAmount) - depositReceived)} still due at pickup.`;
 
   const pickup = [
     b.pickupDate ? date(b.pickupDate) : null,
@@ -129,8 +144,8 @@ async function loadInvoiceView(bookingId: string, invoiceNumber: string, issuedA
       ...(deliveryFee > 0 ? [{ label: "Delivery", value: money(deliveryFee) }] : []),
       { label: "Total", value: money(b.totalAmount), emphasis: true },
     ],
-    deposit: Number(b.depositAmount) > 0 ? money(b.depositAmount) : null,
-    payments: b.payments.map((p) => ({
+    deposit: Number(b.depositAmount) > 0 ? { amount: money(b.depositAmount), status: depositStatus } : null,
+    payments: bookingPayments.map((p) => ({
       date: format(p.paidAt, "d MMM yyyy"),
       description: `${enumLabel(p.type)} · ${enumLabel(p.method)}`,
       reference: p.reference,
