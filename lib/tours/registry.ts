@@ -177,6 +177,15 @@ const TOURS: Record<string, TourConfig> = {
     ],
   },
 
+  "/dashboard/scan": tabTour("dashboard.scan", {
+    header: { title: "Scan In / Out", content: "Check garments out to customers and back in by scanning their QR tags." },
+    content: {
+      title: "Scan a Tag",
+      content:
+        "Use this device's camera, a handheld barcode scanner, or type the code. The app finds the garment's booking and offers the right action.",
+    },
+  }),
+
   "/dashboard/expenses": tabTour("dashboard.expenses", {
     header: { title: "Expenses", content: "Every cost of running the boutique: rent, salaries, supplies, utilities." },
     action: { title: "Add an Expense", content: "Record money as it goes out, so your profit stays accurate." },

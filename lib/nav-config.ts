@@ -20,6 +20,7 @@ import {
   ArrowLeftRight,
   Receipt,
   TrendingUp,
+  ScanLine,
   type LucideIcon,
 } from "lucide-react";
 import { can, homeRouteForRole, type Resource } from "@/lib/permissions";
@@ -34,6 +35,7 @@ export interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "__home__", icon: LayoutDashboard, resource: "dashboard.owner" },
   { label: "Bookings", href: "/dashboard/bookings", icon: ClipboardList, resource: "bookings" },
+  { label: "Scan In / Out", href: "/dashboard/scan", icon: ScanLine, resource: "bookings" },
   { label: "Calendar", href: "/dashboard/calendar", icon: CalendarDays, resource: "calendar" },
   { label: "Appointments", href: "/dashboard/appointments", icon: CalendarClock, resource: "appointments" },
   { label: "Customers", href: "/dashboard/customers", icon: Users, resource: "customers" },
