@@ -134,6 +134,7 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
             <CardContent className="space-y-3">
               <InvoiceActions
                 bookingId={booking.id}
+                bookingNumber={booking.bookingNumber}
                 customerEmail={booking.customer.email}
                 hasPhone={Boolean(booking.customer.whatsapp || booking.customer.phone)}
                 emailEnabled={isEmailConfigured()}

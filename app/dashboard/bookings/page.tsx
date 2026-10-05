@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Download, Eye, Plus } from "lucide-react";
+import { Download, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { BookingStatusBadge, PaymentStatusBadge } from "@/components/domain/status-badge";
 import { FilterBar, type FilterConfig } from "@/components/domain/filter-bar";
 import { PaginationBar } from "@/components/domain/pagination-bar";
+import { InvoicePreviewDialog } from "@/components/domain/invoice-preview-dialog";
 import { parsePagination } from "@/lib/pagination";
 import { formatMoney } from "@/lib/currency";
 import { enumOptions } from "@/lib/format-enum";
@@ -131,16 +132,7 @@ export default async function BookingsPage({
                     <TableCell className="text-right">{formatMoney(b.totalAmount, b.branch.currency)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button asChild variant="ghost" size="icon-sm" title="View invoice">
-                          <a
-                            href={`/api/bookings/${b.id}/invoice`}
-                            target="_blank"
-                            rel="noreferrer"
-                            aria-label={`View invoice for ${b.bookingNumber}`}
-                          >
-                            <Eye className="size-3.5" />
-                          </a>
-                        </Button>
+                        <InvoicePreviewDialog bookingId={b.id} bookingNumber={b.bookingNumber} />
                         <Button asChild variant="ghost" size="icon-sm" title="Download invoice">
                           <a
                             href={`/api/bookings/${b.id}/invoice?download=1`}

@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { emailInvoice, prepareInvoice } from "@/lib/actions/invoice-actions";
+import { InvoicePreviewDialog } from "@/components/domain/invoice-preview-dialog";
 
 type Busy = "download" | "print" | "whatsapp" | "email" | null;
 
@@ -45,12 +46,14 @@ function printPdf(url: string) {
 
 export function InvoiceActions({
   bookingId,
+  bookingNumber,
   customerEmail,
   hasPhone,
   emailEnabled,
   canSend,
 }: {
   bookingId: string;
+  bookingNumber: string;
   customerEmail: string | null;
   hasPhone: boolean;
   emailEnabled: boolean;
@@ -121,6 +124,7 @@ export function InvoiceActions({
   return (
     <>
       <div className="flex flex-wrap gap-2">
+        <InvoicePreviewDialog bookingId={bookingId} bookingNumber={bookingNumber} label="View" />
         <Button variant="outline" size="sm" onClick={onDownload} disabled={busy !== null}>
           <Download className="size-4" />
           {busy === "download" ? "Preparing…" : "Download"}
