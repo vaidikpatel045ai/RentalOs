@@ -370,6 +370,7 @@ model Branch {
   transfersFrom    InventoryTransfer[] @relation("TransferFromBranch")
   transfersTo      InventoryTransfer[] @relation("TransferToBranch")
   messageTemplates MessageTemplate[]
+  expenses         Expense[]
 
   @@unique([organizationId, code])
   @@map("branches")
@@ -447,6 +448,7 @@ model User {
   auditLogs              AuditLog[]
   transfersRequested     InventoryTransfer[]    @relation("TransferRequestedBy")
   transfersApproved      InventoryTransfer[]    @relation("TransferApprovedBy")
+  expensesRecorded       Expense[]              @relation("ExpenseRecordedBy")
 
   @@index([role])
   @@index([branchId])
@@ -1272,6 +1274,46 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// EXPENSES — day-to-day running costs (rent, salaries, supplies…), recorded
+// per branch so the Profit & Loss report can net them against income.
+// Cleaning-job and repair costs are NOT entered here: they're already
+// recorded on those jobs and the P&L picks them up separately.
+// ─────────────────────────────────────────────────────────────────────────
+
+enum ExpenseCategory {
+  RENT
+  SALARIES
+  UTILITIES
+  CLEANING_SUPPLIES
+  ALTERATION_MATERIALS
+  INVENTORY_PURCHASE
+  MARKETING
+  MAINTENANCE
+  TRANSPORT
+  FEES_AND_LICENSES
+  OTHER
+}
+
+model Expense {
+  id               String            @id @default(cuid())
+  branchId         String
+  branch           Branch            @relation(fields: [branchId], references: [id])
+  category         ExpenseCategory
+  amount           Decimal           @db.Decimal(12, 2)
+  expenseDate      DateTime
+  description      String?
+  vendor           String?
+  paymentMethod    TransactionMethod @default(CASH)
+  recordedByUserId String?
+  recordedBy       User?             @relation("ExpenseRecordedBy", fields: [recordedByUserId], references: [id])
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([branchId, expenseDate])
+  @@map("expenses")
 }
 
 model InventoryTransfer {

@@ -177,6 +177,23 @@ const TOURS: Record<string, TourConfig> = {
     ],
   },
 
+  "/dashboard/expenses": tabTour("dashboard.expenses", {
+    header: { title: "Expenses", content: "Every cost of running the boutique: rent, salaries, supplies, utilities." },
+    action: { title: "Add an Expense", content: "Record money as it goes out, so your profit stays accurate." },
+    filters: { title: "Filter by Month", content: "Narrow by category or branch, and step back through earlier months." },
+    content: { title: "The List", content: "Edit or delete anything entered by mistake." },
+  }),
+
+  "/dashboard/profit-loss": {
+    id: "dashboard.profit-loss",
+    steps: [
+      { target: '[data-tour="page-header"]', title: "Profit & Loss", content: "What came in, what went out, and what was left, month by month.", placement: "bottom" },
+      { target: '[data-tour="kpi-today"]', title: "The Bottom Line", content: "Income, expenses, net profit and margin for the selected month.", placement: "bottom" },
+      { target: '[data-tour="page-content"]', title: "Day by Day", content: "Spot the days money went out faster than it came in.", placement: "top" },
+      { target: '[data-tour="page-secondary"]', title: "Where It Came From, Where It Went", content: "Income by payment type and expenses by category.", placement: "top" },
+    ],
+  },
+
   "/dashboard/reports": {
     id: "dashboard.reports",
     steps: [

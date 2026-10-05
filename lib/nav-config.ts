@@ -18,6 +18,8 @@ import {
   PackageSearch,
   Factory,
   ArrowLeftRight,
+  Receipt,
+  TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 import { can, homeRouteForRole, type Resource } from "@/lib/permissions";
@@ -42,6 +44,8 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Delivery & Pickup", href: "/dashboard/delivery", icon: Truck, resource: "delivery" },
   { label: "Transfers", href: "/dashboard/transfers", icon: ArrowLeftRight, resource: "transfers" },
   { label: "Payments", href: "/dashboard/payments", icon: Wallet, resource: "payments" },
+  { label: "Expenses", href: "/dashboard/expenses", icon: Receipt, resource: "expenses" },
+  { label: "Profit & Loss", href: "/dashboard/profit-loss", icon: TrendingUp, resource: "profitLoss" },
   { label: "Reports", href: "/dashboard/reports", icon: BarChart3, resource: "reports" },
   { label: "Suppliers", href: "/dashboard/suppliers", icon: Factory, resource: "suppliers" },
   { label: "Staff", href: "/dashboard/staff", icon: UserCog, resource: "staff" },

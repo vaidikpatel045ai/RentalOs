@@ -32,7 +32,9 @@ export type Resource =
   | "packages"
   | "suppliers"
   | "documents"
-  | "transfers";
+  | "transfers"
+  | "expenses"
+  | "profitLoss";
 
 export type Action = "view" | "create" | "update" | "delete" | "approve";
 
@@ -153,6 +155,16 @@ const PERMISSION_MAP: Record<Resource, Partial<Record<Role, Action[]>>> = {
   transfers: {
     OWNER: ["view", "create", "update", "approve"],
     MANAGER: ["view", "create"],
+  },
+  // Front desk can log petty-cash spends; only managers/owner edit or delete.
+  expenses: {
+    OWNER: ["view", "create", "update", "delete"],
+    MANAGER: ["view", "create", "update", "delete"],
+    SALES: ["view", "create"],
+  },
+  profitLoss: {
+    OWNER: ["view"],
+    MANAGER: ["view"],
   },
 };
 

@@ -20,12 +20,12 @@ export default async function CalendarPage({
   const rangeStart = startOfMonth(month);
   const rangeEnd = endOfMonth(month);
 
-  const branchId = isOwner ? branchIdParam : (session?.user.branchId ?? undefined);
   const organizationId = session!.user.organizationId!;
-  const [events, branches] = await Promise.all([
-    getCalendarEvents(rangeStart, rangeEnd, branchId, organizationId),
-    isOwner ? getCachedBranches(organizationId) : Promise.resolve([]),
-  ]);
+  const branches = isOwner ? await getCachedBranches(organizationId) : [];
+  // Only honor a ?branchId= that belongs to this organization.
+  const ownerBranchId = branchIdParam && branches.some((b) => b.id === branchIdParam) ? branchIdParam : undefined;
+  const branchId = isOwner ? ownerBranchId : (session?.user.branchId ?? undefined);
+  const events = await getCalendarEvents(rangeStart, rangeEnd, branchId, organizationId);
 
   const filters: FilterConfig[] = isOwner
     ? [{ key: "branchId", label: "Branch", options: branches.map((b) => ({ value: b.id, label: b.name })) }]
