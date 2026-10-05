@@ -21,7 +21,9 @@ export async function createBranch(_prev: ActionState, formData: FormData): Prom
     return { error: "Please fix the errors below.", fieldErrors: parsed.error.flatten().fieldErrors };
   }
 
-  const existing = await db.branch.findUnique({ where: { code: parsed.data.code } });
+  const existing = await db.branch.findUnique({
+    where: { organizationId_code: { organizationId: session.user.organizationId, code: parsed.data.code } },
+  });
   if (existing) return { error: `Branch code ${parsed.data.code} already exists.` };
 
   await db.branch.create({

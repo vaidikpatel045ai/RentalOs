@@ -72,10 +72,14 @@ export function PlanForm({
         <div className="space-y-1.5">
           <Label htmlFor="currency">Currency</Label>
           <Input id="currency" {...form.register("currency")} />
+          {form.formState.errors.currency && <p className="text-xs text-destructive">{form.formState.errors.currency.message}</p>}
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="maxBranches">Max Branches</Label>
           <Input id="maxBranches" type="number" min={1} placeholder="Leave blank for unlimited" {...form.register("maxBranches")} />
+          {form.formState.errors.maxBranches && (
+            <p className="text-xs text-destructive">{form.formState.errors.maxBranches.message}</p>
+          )}
         </div>
       </div>
 

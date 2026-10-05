@@ -340,7 +340,7 @@ model Branch {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
   name           String
-  code           String   @unique // e.g. "DXB", "AUH", "SHJ"
+  code           String // e.g. "DXB" — unique per organization, not platform-wide
   country      String   @default("AE") // ISO 3166-1 alpha-2
   currency     String   @default("AED") // ISO 4217
   timezone     String   @default("Asia/Dubai")
@@ -371,6 +371,7 @@ model Branch {
   transfersTo      InventoryTransfer[] @relation("TransferToBranch")
   messageTemplates MessageTemplate[]
 
+  @@unique([organizationId, code])
   @@map("branches")
 }
 

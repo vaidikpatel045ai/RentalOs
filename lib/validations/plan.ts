@@ -7,7 +7,12 @@ export const planSchema = z.object({
   billingInterval: z.enum(BILLING_INTERVALS),
   price: z.coerce.number().nonnegative(),
   currency: z.string().trim().min(1).default("AED"),
-  maxBranches: z.coerce.number().int().positive().optional(),
+  // Blank means unlimited — without the preprocess, z.coerce turns "" into 0
+  // and fails .positive(), silently blocking the form.
+  maxBranches: z.preprocess(
+    (v) => (v === "" || v === null ? undefined : v),
+    z.coerce.number().int().positive("Must be at least 1, or leave blank for unlimited").optional()
+  ),
 });
 
 export type PlanInput = z.input<typeof planSchema>;

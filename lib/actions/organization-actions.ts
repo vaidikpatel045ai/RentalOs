@@ -33,9 +33,6 @@ export async function createOrganization(_prev: ActionState, formData: FormData)
   const existingEmail = await db.user.findUnique({ where: { email: data.ownerEmail.toLowerCase().trim() } });
   if (existingEmail) return { error: "A user with this email already exists." };
 
-  const existingCode = await db.branch.findUnique({ where: { code: data.code } });
-  if (existingCode) return { error: `Branch code ${data.code} already exists.` };
-
   const passwordHash = await bcrypt.hash(data.ownerPassword, 10);
 
   const organization = await db.organization.create({
