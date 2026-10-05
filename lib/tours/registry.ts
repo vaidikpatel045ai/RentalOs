@@ -271,15 +271,17 @@ const TOURS: Record<string, TourConfig> = {
   "/portal/tailor": {
     id: "portal.tailor",
     steps: [
-      { target: '[data-tour="page-header"]', title: "My Tasks", content: "Only the jobs assigned to you — no back-office clutter.", placement: "bottom" },
-      { target: '[data-tour="page-content"]', title: "Overdue, Today, Upcoming", content: "Switch tabs to see what needs attention first.", placement: "top" },
+      { target: '[data-tour="page-header"]', title: "My Alterations", content: "Only the jobs assigned to you — no back-office clutter.", placement: "bottom" },
+      { target: '[data-tour="page-filters"]', title: "Overdue, Today, Upcoming", content: "Tap a box to see those jobs. Start with anything overdue.", placement: "bottom" },
+      { target: '[data-tour="page-content"]', title: "Your Jobs", content: "The bar shows how far each job has got. The big button moves it to the next step.", placement: "top" },
     ],
   },
   "/portal/cleaner": {
     id: "portal.cleaner",
     steps: [
-      { target: '[data-tour="page-header"]', title: "My Tasks", content: "Your cleaning queue — nothing else.", placement: "bottom" },
-      { target: '[data-tour="page-content"]', title: "Overdue, Today, Upcoming", content: "One tap moves a job to the next stage.", placement: "top" },
+      { target: '[data-tour="page-header"]', title: "Cleaning Queue", content: "Your cleaning queue — nothing else.", placement: "bottom" },
+      { target: '[data-tour="page-filters"]', title: "Overdue, Today, Upcoming", content: "Tap a box to see those jobs. Start with anything overdue.", placement: "bottom" },
+      { target: '[data-tour="page-content"]', title: "Your Jobs", content: "Add before and after photos, then one tap moves a job to the next stage.", placement: "top" },
     ],
   },
   "/portal/delivery": {

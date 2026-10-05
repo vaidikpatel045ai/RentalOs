@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { addTailoringNote } from "@/lib/actions/job-actions";
 
-export function AddJobNoteDialog({ jobId }: { jobId: string }) {
+export function AddJobNoteDialog({ jobId, className }: { jobId: string; className?: string }) {
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -45,7 +45,7 @@ export function AddJobNoteDialog({ jobId }: { jobId: string }) {
       }}
     >
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
+        <Button size="sm" variant="outline" className={className}>
           <MessageSquarePlus className="size-4" /> Add Update
         </Button>
       </DialogTrigger>

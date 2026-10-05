@@ -37,7 +37,7 @@ export default async function PortalLayout({ children }: { children: React.React
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
-      <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-4">
+      <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-4 sm:px-6">
         <span className="font-heading text-lg tracking-tight">Bridal Rental OS</span>
         <div className="flex items-center gap-3">
           <PageTour />
@@ -58,7 +58,7 @@ export default async function PortalLayout({ children }: { children: React.React
           </form>
         </div>
       </header>
-      <main className="flex-1 p-4">{children}</main>
+      <main className="flex-1 px-4 py-5 sm:px-6 sm:py-8 lg:px-8">{children}</main>
     </div>
   );
 }

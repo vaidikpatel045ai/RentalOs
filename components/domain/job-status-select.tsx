@@ -99,11 +99,13 @@ function PrimaryAction<T extends string>({
   next,
   label,
   onUpdate,
+  className,
 }: {
   jobId: string;
   next: T | null;
   label: string;
   onUpdate: (jobId: string, status: T) => Promise<void>;
+  className?: string;
 }) {
   const [isPending, startTransition] = useTransition();
 
@@ -118,6 +120,7 @@ function PrimaryAction<T extends string>({
   return (
     <Button
       size="sm"
+      className={className}
       disabled={isPending}
       onClick={() => {
         startTransition(async () => {
@@ -136,9 +139,10 @@ function PrimaryAction<T extends string>({
   );
 }
 
-export function TailoringPrimaryAction({ jobId, status }: { jobId: string; status: TailoringStatus }) {
+export function TailoringPrimaryAction({ jobId, status, className }: { jobId: string; status: TailoringStatus; className?: string }) {
   return (
     <PrimaryAction
+      className={className}
       jobId={jobId}
       next={nextTailoringStatus(status)}
       label={TAILORING_NEXT_ACTION_LABEL[status]}
@@ -147,9 +151,10 @@ export function TailoringPrimaryAction({ jobId, status }: { jobId: string; statu
   );
 }
 
-export function CleaningPrimaryAction({ jobId, status }: { jobId: string; status: CleaningStatus }) {
+export function CleaningPrimaryAction({ jobId, status, className }: { jobId: string; status: CleaningStatus; className?: string }) {
   return (
     <PrimaryAction
+      className={className}
       jobId={jobId}
       next={nextCleaningStatus(status)}
       label={CLEANING_NEXT_ACTION_LABEL[status]}

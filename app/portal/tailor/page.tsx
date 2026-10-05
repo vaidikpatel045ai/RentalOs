@@ -1,22 +1,25 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getCachedBranchById } from "@/lib/queries/branches";
 import { TailorJobCard, type TailorJobCardData } from "@/components/domain/tailor-job-card";
+import { PortalGreeting, PortalJobBoard } from "@/components/domain/portal/portal-job-board";
 import { groupJobsByTimeline } from "@/lib/job-grouping";
-import { CheckCircle2 } from "lucide-react";
 
 export default async function TailorPortalPage() {
   const session = await auth();
-  const rows = await db.tailoringJob.findMany({
-    where: { assignedToUserId: session?.user.id },
-    include: {
-      garment: { include: { images: { where: { isPrimary: true }, take: 1 } } },
-      customer: true,
-      tailoringNotes: { orderBy: { createdAt: "desc" }, include: { author: true } },
-    },
-    orderBy: { dueAt: "asc" },
-    take: 200,
-  });
+  const [rows, branch] = await Promise.all([
+    db.tailoringJob.findMany({
+      where: { assignedToUserId: session?.user.id },
+      include: {
+        garment: { include: { images: { where: { isPrimary: true }, take: 1 } } },
+        customer: true,
+        tailoringNotes: { orderBy: { createdAt: "desc" }, include: { author: true } },
+      },
+      orderBy: { dueAt: "asc" },
+      take: 200,
+    }),
+    session?.user.branchId ? getCachedBranchById(session.user.branchId) : Promise.resolve(null),
+  ]);
 
   const jobs: TailorJobCardData[] = rows.map((job) => ({
     id: job.id,
@@ -44,35 +47,38 @@ export default async function TailorPortalPage() {
 
   const groups = groupJobsByTimeline(jobs, "COMPLETED");
   const activeCount = groups.overdue.length + groups.today.length + groups.upcoming.length;
+  const render = (list: TailorJobCardData[]) => list.map((job) => <TailorJobCard key={job.id} job={job} />);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <div data-tour="page-header">
-        <h1 className="font-heading text-xl">My Tasks</h1>
-        <p className="text-sm text-muted-foreground">{activeCount} active alteration jobs</p>
-      </div>
-
-      <Tabs defaultValue={groups.overdue.length > 0 ? "overdue" : groups.today.length > 0 ? "today" : "upcoming"} data-tour="page-content">
-        <TabsList>
-          <TabsTrigger value="overdue">Overdue{groups.overdue.length > 0 ? ` (${groups.overdue.length})` : ""}</TabsTrigger>
-          <TabsTrigger value="today">Today{groups.today.length > 0 ? ` (${groups.today.length})` : ""}</TabsTrigger>
-          <TabsTrigger value="upcoming">Upcoming{groups.upcoming.length > 0 ? ` (${groups.upcoming.length})` : ""}</TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
-        </TabsList>
-
-        {(["overdue", "today", "upcoming", "completed"] as const).map((key) => (
-          <TabsContent key={key} value={key} className="space-y-3">
-            {groups[key].length === 0 ? (
-              <div className="flex flex-col items-center gap-2 py-12 text-center text-sm text-muted-foreground">
-                <CheckCircle2 className="size-6" />
-                {key === "completed" ? "No completed jobs yet." : "Nothing here."}
-              </div>
-            ) : (
-              groups[key].map((job) => <TailorJobCard key={job.id} job={job} />)
-            )}
-          </TabsContent>
-        ))}
-      </Tabs>
+    <div className="mx-auto max-w-6xl space-y-6">
+      <PortalGreeting
+        name={session?.user.name ?? "there"}
+        timezone={branch?.timezone ?? "Asia/Dubai"}
+        title="My Alterations"
+        summary={workloadSummary(activeCount, groups.overdue.length, groups.today.length, "alteration")}
+      />
+      <PortalJobBoard
+        groups={{
+          overdue: render(groups.overdue),
+          today: render(groups.today),
+          upcoming: render(groups.upcoming),
+          completed: render(groups.completed),
+        }}
+        emptyText={{
+          overdue: "Nothing overdue. Nice work.",
+          today: "Nothing due today.",
+          upcoming: "No upcoming alterations.",
+          completed: "Finished jobs will show here.",
+        }}
+      />
     </div>
   );
+}
+
+function workloadSummary(active: number, overdue: number, today: number, noun: string): string {
+  if (active === 0) return "You're all caught up.";
+  const parts = [`${active} active ${noun} job${active === 1 ? "" : "s"}`];
+  if (overdue > 0) parts.push(`${overdue} overdue`);
+  if (today > 0) parts.push(`${today} due today`);
+  return `${parts.join(", ")}.`;
 }
