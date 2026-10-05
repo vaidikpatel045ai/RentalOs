@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { getCachedBranches } from "@/lib/queries/branches";
 import { can } from "@/lib/permissions";
 import { formatMoney } from "@/lib/currency";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -16,9 +17,9 @@ import { parsePagination } from "@/lib/pagination";
 export default async function PackagesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; branchId?: string; page?: string; pageSize?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; branchId?: string; page?: string; pageSize?: string }>;
 }) {
-  const { q, branchId, ...paginationParams } = await searchParams;
+  const { q, status, branchId, ...paginationParams } = await searchParams;
   const { page, pageSize, skip, take } = parsePagination(paginationParams);
   const session = await auth();
   const isOwner = session?.user.role === "OWNER";
@@ -35,6 +36,7 @@ export default async function PackagesPage({
   const where = {
     ...branchWhere,
     ...(q ? { name: { contains: q, mode: "insensitive" as const } } : {}),
+    ...(status === "draft" ? { isDraft: true } : status === "published" ? { isDraft: false } : {}),
   };
 
   const [packages, totalCount] = await Promise.all([
@@ -48,9 +50,12 @@ export default async function PackagesPage({
     db.package.count({ where }),
   ]);
 
-  const filters: FilterConfig[] = isOwner
-    ? [{ key: "branchId", label: "Branch", options: branches.map((b) => ({ value: b.id, label: b.name })) }]
-    : [];
+  const filters: FilterConfig[] = [
+    { key: "status", label: "Status", options: [{ value: "published", label: "Published" }, { value: "draft", label: "Draft" }] },
+    ...(isOwner
+      ? [{ key: "branchId", label: "Branch", options: branches.map((b) => ({ value: b.id, label: b.name })) }]
+      : []),
+  ];
 
   return (
     <div className="space-y-6">
@@ -96,12 +101,19 @@ export default async function PackagesPage({
                 ) : (
                   packages.map((p) => (
                     <TableRow key={p.id}>
-                      <TableCell className="font-medium">{p.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <span className="flex items-center gap-2">
+                          {p.name}
+                          {p.isDraft && <Badge variant="secondary">Draft</Badge>}
+                        </span>
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{p.branch.name}</TableCell>
                       <TableCell className="text-muted-foreground">{p.items.length}</TableCell>
-                      <TableCell>{formatMoney(p.price, p.branch.currency)}</TableCell>
+                      <TableCell>{p.price === null ? <span className="text-muted-foreground">—</span> : formatMoney(p.price, p.branch.currency)}</TableCell>
                       <TableCell>
-                        {canManage ? (
+                        {p.isDraft ? (
+                          <span className="text-xs text-muted-foreground">Not yet published</span>
+                        ) : canManage ? (
                           <PackageActiveToggle packageId={p.id} isActive={p.isActive} />
                         ) : (
                           <span className="text-xs text-muted-foreground">{p.isActive ? "Active" : "Inactive"}</span>

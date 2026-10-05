@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { can } from "@/lib/permissions";
 import { getCachedBranches } from "@/lib/queries/branches";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PackageForm } from "@/components/domain/package-form";
 import { PackageItemsManager } from "@/components/domain/package-items-manager";
@@ -14,16 +15,25 @@ export default async function EditPackagePage({ params }: { params: Promise<{ id
   if (!session?.user || !can(session.user.role, "packages", "update")) {
     redirect("/dashboard/packages");
   }
-  const [pkg, branches] = await Promise.all([
+  const [pkg, allBranches] = await Promise.all([
     db.package.findUnique({ where: { id }, include: { items: { orderBy: { id: "asc" } } } }),
-    getCachedBranches(session!.user.organizationId!),
+    getCachedBranches(session.user.organizationId!),
   ]);
-  if (!pkg) notFound();
+  const branches =
+    session.user.role === "OWNER" ? allBranches : allBranches.filter((b) => b.id === session.user.branchId);
+  // Another boutique's (or another branch's) package looks exactly like a missing one.
+  if (!pkg || !branches.some((b) => b.id === pkg.branchId)) notFound();
 
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="font-heading text-2xl">Edit {pkg.name}</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="font-heading text-2xl">Edit {pkg.name}</h1>
+          {pkg.isDraft && <Badge variant="secondary">Draft</Badge>}
+        </div>
+        {pkg.isDraft && (
+          <p className="text-sm text-muted-foreground">This package is a draft. Publish it when it&apos;s ready to offer.</p>
+        )}
       </div>
       <Card>
         <CardHeader>
@@ -31,15 +41,15 @@ export default async function EditPackagePage({ params }: { params: Promise<{ id
         </CardHeader>
         <CardContent>
           <PackageForm
-            branches={branches}
+            branches={branches.map((b) => ({ id: b.id, name: b.name }))}
             action={updatePackage.bind(null, id)}
+            status={pkg.isDraft ? "draft" : "published"}
             defaultValues={{
               branchId: pkg.branchId,
               name: pkg.name,
               description: pkg.description ?? "",
-              price: Number(pkg.price),
+              price: pkg.price === null ? "" : Number(pkg.price),
             }}
-            submitLabel="Save Changes"
           />
         </CardContent>
       </Card>

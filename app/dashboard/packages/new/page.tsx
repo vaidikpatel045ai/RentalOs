@@ -11,20 +11,25 @@ export default async function NewPackagePage() {
   if (!session?.user || !can(session.user.role, "packages", "create")) {
     redirect("/dashboard/packages");
   }
-  const branches = await getCachedBranches(session!.user.organizationId!);
+  const allBranches = await getCachedBranches(session.user.organizationId!);
+  // Managers create packages for their own branch only.
+  const branches =
+    session.user.role === "OWNER" ? allBranches : allBranches.filter((b) => b.id === session.user.branchId);
 
   return (
     <div className="max-w-2xl space-y-6">
       <div>
         <h1 className="font-heading text-2xl">New Package</h1>
-        <p className="text-sm text-muted-foreground">Add items to this package after saving.</p>
+        <p className="text-sm text-muted-foreground">
+          Not ready yet? Save it as a draft and finish it later. Add items to the package after saving.
+        </p>
       </div>
       <Card>
         <CardHeader>
           <CardTitle className="font-heading text-base">Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <PackageForm branches={branches} action={createPackage} />
+          <PackageForm branches={branches.map((b) => ({ id: b.id, name: b.name }))} action={createPackage} />
         </CardContent>
       </Card>
     </div>

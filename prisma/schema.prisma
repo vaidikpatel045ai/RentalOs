@@ -1196,8 +1196,11 @@ model Package {
   branch      Branch        @relation(fields: [branchId], references: [id])
   name        String
   description String?
-  price       Decimal       @db.Decimal(12, 2)
+  /// Optional while the package is a draft; required to publish.
+  price       Decimal?      @db.Decimal(12, 2)
   isActive    Boolean       @default(true)
+  /// Drafts are work in progress: hidden from anything customer-facing until published.
+  isDraft     Boolean       @default(false)
 
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt

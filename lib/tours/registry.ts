@@ -136,7 +136,7 @@ const TOURS: Record<string, TourConfig> = {
     header: { title: "Packages", content: "Bundled offerings — a gown plus veil plus jewellery, priced as one." },
     action: { title: "New Package", content: "Create a bundle, then add items to it on the next screen." },
     filters: { title: "Search & Filter", content: "Filter by branch or search by name." },
-    content: { title: "The List", content: "Toggle a package active or inactive right from this table." },
+    content: { title: "The List", content: "Toggle a package active or inactive right from this table. Drafts stay hidden until you publish them." },
   }),
 
   "/dashboard/tailoring": tabTour("dashboard.tailoring", {
