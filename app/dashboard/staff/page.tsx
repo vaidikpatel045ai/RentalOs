@@ -12,6 +12,8 @@ import { FilterBar, type FilterConfig } from "@/components/domain/filter-bar";
 import { PaginationBar } from "@/components/domain/pagination-bar";
 import { parsePagination } from "@/lib/pagination";
 import { enumOptions } from "@/lib/format-enum";
+import { ResetPasswordDialog } from "@/components/domain/reset-password-dialog";
+import { resetStaffPassword } from "@/lib/actions/password-actions";
 import type { Role } from "@prisma/client";
 
 const STAFF_ROLES: Role[] = ["OWNER", "MANAGER", "SALES", "STYLIST", "TAILOR", "CLEANER", "DELIVERY"];
@@ -93,7 +95,7 @@ export default async function StaffPage({
                 <TableHead>Employee Code</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Status</TableHead>
-                {canEdit && <TableHead className="text-right">Action</TableHead>}
+                {canEdit && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -116,11 +118,20 @@ export default async function StaffPage({
                     </TableCell>
                     {canEdit && (
                       <TableCell className="text-right">
-                        <Button asChild variant="ghost" size="icon-sm">
-                          <Link href={`/dashboard/staff/${u.id}/edit`}>
-                            <Pencil className="size-3.5" />
-                          </Link>
-                        </Button>
+                        {/* Same rule as lib/staff-access.ts: only the owner touches an owner's account,
+                            and your own password is changed from the account menu, not reset here. */}
+                        {(isOwner || u.role !== "OWNER") && (
+                          <div className="flex justify-end gap-1">
+                            {u.id !== session?.user.id && (
+                              <ResetPasswordDialog userName={u.name} reset={resetStaffPassword.bind(null, u.id)} />
+                            )}
+                            <Button asChild variant="ghost" size="icon-sm" title="Edit" aria-label={`Edit ${u.name}`}>
+                              <Link href={`/dashboard/staff/${u.id}/edit`}>
+                                <Pencil className="size-3.5" />
+                              </Link>
+                            </Button>
+                          </div>
+                        )}
                       </TableCell>
                     )}
                   </TableRow>

@@ -5,6 +5,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { OrganizationBillingPanel } from "@/components/domain/organization-billing-panel";
 import { enumLabel } from "@/lib/format-enum";
+import { ResetPasswordDialog } from "@/components/domain/reset-password-dialog";
+import { resetOwnerPassword } from "@/lib/actions/password-actions";
 
 export default async function OrganizationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -87,12 +89,13 @@ export default async function OrganizationDetailPage({ params }: { params: Promi
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead className="text-right">Password</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {organization.users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
                     No staff yet.
                   </TableCell>
                 </TableRow>
@@ -104,6 +107,14 @@ export default async function OrganizationDetailPage({ params }: { params: Promi
                     <TableCell className="text-muted-foreground">{enumLabel(u.role)}</TableCell>
                     <TableCell>
                       <Badge variant={u.isActive ? "secondary" : "outline"}>{u.isActive ? "Active" : "Inactive"}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {/* Only owners: everyone else is reset by their own owner from the boutique's Staff page. */}
+                      {u.role === "OWNER" ? (
+                        <ResetPasswordDialog userName={u.name} reset={resetOwnerPassword.bind(null, u.id)} label="Reset" />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Owner resets</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))

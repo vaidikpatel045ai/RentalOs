@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { LogOut } from "lucide-react";
+import Link from "next/link";
+import { KeyRound, LogOut } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { signOutAction } from "@/lib/actions/auth-actions";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { NotificationBell } from "@/components/domain/notification-bell";
 import { PageTour } from "@/components/tour/page-tour";
 import { getUnreadNotificationCount, getRecentNotifications } from "@/lib/queries/notifications";
 import { getOrganizationForUser, isOrganizationActive } from "@/lib/tenant";
+import { enforceSessionValidity } from "@/lib/session-guard";
 
 // Shared shell for the mobile-first operational portals (Tailor, Cleaner,
 // Delivery, Customer). Deliberately minimal — no admin sidebar — per spec
@@ -18,7 +20,8 @@ export default async function PortalLayout({ children }: { children: React.React
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const [organization, unreadCount, notifications] = await Promise.all([
+  const [, organization, unreadCount, notifications] = await Promise.all([
+    enforceSessionValidity(session),
     getOrganizationForUser(session.user.organizationId),
     getUnreadNotificationCount(session.user.id),
     getRecentNotifications(session.user.id),
@@ -48,6 +51,11 @@ export default async function PortalLayout({ children }: { children: React.React
             </Avatar>
             <span className="text-sm font-medium">{name}</span>
           </div>
+          <Button asChild variant="ghost" size="icon" aria-label="Change password" title="Change password">
+            <Link href="/change-password">
+              <KeyRound className="size-4" />
+            </Link>
+          </Button>
           <form action={signOutAction}>
             <Button type="submit" variant="ghost" size="icon" className="sm:hidden" aria-label="Sign out">
               <LogOut className="size-4" />

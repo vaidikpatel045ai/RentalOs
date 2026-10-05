@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
+import { Suspense, useActionState } from "react";
 import Link from "next/link";
 import { authenticate, type LoginState } from "@/lib/actions/auth-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
+import { LoginNotice } from "@/components/domain/login-notice";
 
 const initialState: LoginState = {};
 
@@ -31,7 +32,13 @@ export default function LoginPage() {
             Enter your workspace credentials to continue.
           </p>
 
-          <form action={formAction} className="mt-6 space-y-4">
+          <div className="mt-6">
+            <Suspense fallback={null}>
+              <LoginNotice />
+            </Suspense>
+          </div>
+
+          <form action={formAction} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -44,7 +51,12 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-baseline justify-between gap-2">
+                <Label htmlFor="password">Password</Label>
+                <Link href="/forgot-password" className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+                  Forgot password?
+                </Link>
+              </div>
               <PasswordInput
                 id="password"
                 name="password"

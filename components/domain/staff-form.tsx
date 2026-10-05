@@ -25,11 +25,14 @@ export function StaffForm({
   action,
   mode,
   defaultValues,
+  roles = STAFF_ROLES,
 }: {
   branches: Branch[];
   action: (prev: ActionState, formData: FormData) => Promise<ActionState>;
   mode: "create" | "edit";
   defaultValues?: Partial<StaffFormValues>;
+  /** Roles the person filling the form may give; the server enforces the same list. */
+  roles?: readonly (typeof STAFF_ROLES)[number][];
 }) {
   const [isPending, startTransition] = useTransition();
   // Each schema is resolved separately (so its own call type-checks against
@@ -77,7 +80,7 @@ export function StaffForm({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {STAFF_ROLES.map((r) => (
+              {roles.map((r) => (
                 <SelectItem key={r} value={r}>
                   {r}
                 </SelectItem>
@@ -134,6 +137,7 @@ export function StaffForm({
           <div className="space-y-1.5">
             <Label htmlFor="newPassword">New Password (optional)</Label>
             <Input id="newPassword" type="password" placeholder="Leave blank to keep current password" {...form.register("newPassword")} />
+            <p className="text-xs text-muted-foreground">They&apos;ll be signed out and asked to choose their own password at next sign-in.</p>
           </div>
         )}
       </div>
