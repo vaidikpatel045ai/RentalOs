@@ -1,6 +1,9 @@
 import Image from "next/image";
 import { differenceInCalendarDays } from "date-fns";
-import { CalendarClock, FileText, Phone, Ruler, Shirt } from "lucide-react";
+import { CalendarClock, Download, FileText, Phone, Ruler, Shirt } from "lucide-react";
+import type { BookingStatus } from "@prisma/client";
+import { Button } from "@/components/ui/button";
+import { InvoicePreviewDialog } from "@/components/domain/invoice-preview-dialog";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +18,9 @@ function formatter(timezone: string, options: Intl.DateTimeFormatOptions) {
   const f = new Intl.DateTimeFormat("en-GB", { ...options, timeZone: timezone });
   return (d: Date) => f.format(d);
 }
+
+/** Matches what the invoice route lets a customer open. */
+const INVOICE_STATUSES: BookingStatus[] = ["CONFIRMED", "IN_PROGRESS", "COMPLETED"];
 
 function KeyDate({ label, value }: { label: string; value: string }) {
   return (
@@ -241,6 +247,21 @@ export default async function CustomerPortalPage() {
                       </a>
                     )}
                   </div>
+
+                  {INVOICE_STATUSES.includes(b.status) && (
+                    <div className="flex flex-col gap-2 border-t border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                      <p className="text-xs text-muted-foreground">Your invoice is always up to date with your latest payments.</p>
+                      <div className="grid grid-cols-2 gap-2 sm:flex">
+                        <InvoicePreviewDialog bookingId={b.id} bookingNumber={b.bookingNumber} label="View invoice" />
+                        <Button asChild variant="outline" size="sm">
+                          <a href={`/api/bookings/${b.id}/invoice?download=1`} download>
+                            <Download className="size-4" />
+                            Download
+                          </a>
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </Card>
               );
             })
