@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Role } from "@prisma/client";
-import { Menu, LogOut } from "lucide-react";
+import { Menu, LogOut, KeyRound } from "lucide-react";
 import { signOutAction } from "@/lib/actions/auth-actions";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -117,6 +117,11 @@ export function AppTopbar({
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/change-password" className="flex w-full items-center gap-2">
+                <KeyRound className="size-4" /> Change password
+              </Link>
+            </DropdownMenuItem>
             <form action={signOutAction}>
               <DropdownMenuItem asChild>
                 <button type="submit" className="flex w-full items-center gap-2">

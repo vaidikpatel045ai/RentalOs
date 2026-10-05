@@ -403,25 +403,30 @@ model BranchSettings {
 // ─────────────────────────────────────────────────────────────────────────
 
 model User {
-  id             String        @id @default(cuid())
-  email          String        @unique
-  passwordHash   String
-  name           String
-  phone          String? // E.164
-  role           Role
+  id                 String        @id @default(cuid())
+  email              String        @unique
+  passwordHash       String
+  name               String
+  phone              String? // E.164
+  role               Role
   // Nullable at the DB level because PLATFORM_ADMIN genuinely has none —
   // enforced as required for every other role at the application layer
   // (lib/validations/staff.ts, admin onboarding), not here.
-  organizationId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id])
-  branchId       String?
-  branch         Branch?       @relation(fields: [branchId], references: [id])
-  isActive       Boolean       @default(true)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  organizationId     String?
+  organization       Organization? @relation(fields: [organizationId], references: [id])
+  branchId           String?
+  branch             Branch?       @relation(fields: [branchId], references: [id])
+  isActive           Boolean       @default(true)
+  /// Set when someone else resets the password: the user must pick their own at next sign-in.
+  mustChangePassword Boolean       @default(false)
+  /// Sessions that started before this are signed out (password changed or reset).
+  passwordChangedAt  DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
-  staffProfile    StaffProfile?
-  customerProfile Customer?     @relation("CustomerLoginAccount")
+  passwordResetTokens PasswordResetToken[]
+  staffProfile        StaffProfile?
+  customerProfile     Customer?            @relation("CustomerLoginAccount")
 
   assignedBookings      Booking[]            @relation("BookingAssignedStaff")
   assignedAppointments  Appointment[]        @relation("AppointmentAssignedStaff")
@@ -1398,4 +1403,19 @@ model SalesInquiry {
 
   @@index([status, createdAt])
   @@map("sales_inquiries")
+}
+
+/// "Forgot password" links. Only a SHA-256 hash of the token is stored, so a
+/// leaked database row can't be used to reset anyone's password.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@map("password_reset_tokens")
 }

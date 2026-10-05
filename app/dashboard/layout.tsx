@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { getCachedBranchById } from "@/lib/queries/branches";
 import { getUnreadNotificationCount, getRecentNotifications } from "@/lib/queries/notifications";
 import { getOrganizationForUser, isOrganizationActive } from "@/lib/tenant";
+import { enforceSessionValidity } from "@/lib/session-guard";
 import { AppSidebar } from "@/components/domain/app-sidebar";
 import { AppTopbar } from "@/components/domain/app-topbar";
 
@@ -13,7 +14,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   // Runs on every dashboard navigation — all in parallel, one DB round trip total.
-  const [organization, branch, unreadCount, notifications] = await Promise.all([
+  const [, organization, branch, unreadCount, notifications] = await Promise.all([
+    enforceSessionValidity(session),
     getOrganizationForUser(session.user.organizationId),
     session.user.branchId ? getCachedBranchById(session.user.branchId) : Promise.resolve(null),
     getUnreadNotificationCount(session.user.id),

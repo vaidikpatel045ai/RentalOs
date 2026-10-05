@@ -22,6 +22,8 @@ export const authConfig = {
         token.branchId = (user as { branchId: string | null }).branchId;
         token.organizationId = (user as { organizationId: string | null }).organizationId;
         token.id = user.id as string;
+        // When this sign-in happened: a password change after it ends the session (lib/session-guard.ts).
+        token.signedInAt = Date.now();
       }
       return token;
     },
@@ -31,6 +33,7 @@ export const authConfig = {
         session.user.role = token.role as Role;
         session.user.branchId = token.branchId as string | null;
         session.user.organizationId = token.organizationId as string | null;
+        session.user.signedInAt = (token.signedInAt as number | undefined) ?? 0;
       }
       return session;
     },
