@@ -295,7 +295,7 @@ const TOURS: Record<string, TourConfig> = {
     id: "portal.customer",
     steps: [
       { target: '[data-tour="page-header"]', title: "Welcome", content: "Your bookings, measurements and documents, all in one place.", placement: "bottom" },
-      { target: '[data-tour="page-content"]', title: "Your Bookings", content: "Track status and see what's still owed.", placement: "top" },
+      { target: '[data-tour="page-content"]', title: "Your Bookings", content: "Your dates, what you've paid and what's still owed.", placement: "top" },
     ],
   },
 };
