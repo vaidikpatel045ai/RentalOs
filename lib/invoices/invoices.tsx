@@ -31,27 +31,47 @@ export async function findAccessibleBooking(user: SessionUser, bookingId: string
   return booking;
 }
 
+const DATE = "EEE, d MMM yyyy";
+
+/** Invoices made before this date used an older, shorter layout; they're
+ * treated as out of date so the next view or download produces the full one. */
+const LAYOUT_UPDATED_AT = new Date("2026-10-05T11:30:00.000Z");
+
 async function loadInvoiceView(bookingId: string, invoiceNumber: string, issuedAt: Date): Promise<InvoiceView> {
   const b = await db.booking.findUniqueOrThrow({
     where: { id: bookingId },
     include: {
       branch: { include: { organization: { select: { name: true } } } },
       customer: true,
+      assignedStaff: { select: { name: true } },
       items: {
-        include: { garment: { select: { sku: true, name: true } } },
+        include: {
+          garment: { select: { sku: true, name: true, category: true, designer: true, size: true, color: true } },
+        },
         orderBy: { createdAt: "asc" },
       },
       payments: { where: { status: "COMPLETED" }, orderBy: { paidAt: "asc" } },
     },
   });
   const money = (v: unknown) => formatMoney(Number(v), b.branch.currency);
+  const date = (d: Date) => format(d, DATE);
   const discount = Number(b.discount);
   const deliveryFee = Number(b.deliveryFee);
   const balance = Number(b.balanceDue);
+  const c = b.customer;
+  /** Keeps only the rows that have a value. */
+  const present = (rows: [string, string | null | undefined | false][]) =>
+    rows.filter((r): r is [string, string] => Boolean(r[1])).map(([label, value]) => ({ label, value }));
+
+  const pickup = [
+    b.pickupDate ? date(b.pickupDate) : null,
+    enumLabel(b.deliveryMethod),
+    b.pickupLocation,
+  ].filter(Boolean);
+  const returnBy = b.returnDate ?? b.rentalEnd;
 
   return {
     invoiceNumber,
-    issuedOn: format(issuedAt, "d MMM yyyy"),
     boutiqueName: b.branch.organization.name,
     branchName: b.branch.name,
     branchAddress: [
@@ -59,23 +79,53 @@ async function loadInvoiceView(bookingId: string, invoiceNumber: string, issuedA
       [b.branch.city, b.branch.stateOrRegion, b.branch.postalCode].filter(Boolean).join(", "),
     ].filter(Boolean),
     branchContact: [b.branch.phone, b.branch.email].filter((v): v is string => Boolean(v)),
-    customerName: `${b.customer.firstName} ${b.customer.lastName}`,
-    customerContact: [b.customer.phone, b.customer.email].filter((v): v is string => Boolean(v)),
-    bookingNumber: b.bookingNumber,
-    rentalPeriod: `${format(b.rentalStart, "d MMM yyyy")} – ${format(b.rentalEnd, "d MMM yyyy")}`,
-    weddingDate: b.weddingDate ? format(b.weddingDate, "d MMM yyyy") : null,
+    meta: [
+      { label: "Invoice no.", value: invoiceNumber },
+      { label: "Issued", value: format(issuedAt, "d MMM yyyy") },
+      { label: "Booking no.", value: b.bookingNumber },
+      { label: "Booked on", value: format(b.createdAt, "d MMM yyyy") },
+    ],
+    bookingStatus: enumLabel(b.status),
+    paymentStatus: enumLabel(b.paymentStatus),
+    customerName: `${c.firstName} ${c.lastName}`,
+    customerDetails: present([
+      ["Phone", c.phone],
+      ["WhatsApp", c.whatsapp && c.whatsapp !== c.phone ? c.whatsapp : null],
+      ["Email", c.email],
+      ["Nationality", c.nationality],
+    ]),
+    eventDetails: present([
+      ["Event", c.eventType],
+      ["Wedding date", (b.weddingDate ?? c.weddingDate) ? date((b.weddingDate ?? c.weddingDate)!) : null],
+      ["Venue", c.weddingVenue],
+    ]),
+    bookingDetails: present([
+      ["Rental period", `${format(b.rentalStart, "d MMM")} – ${format(b.rentalEnd, "d MMM yyyy")}`],
+      ["Pickup", pickup.join(" · ")],
+      ["Return", `${date(returnBy)} · ${enumLabel(b.returnMethod)}`],
+      ["Trial", b.trialDate ? date(b.trialDate) : null],
+      ["Fitting", b.fittingDate ? date(b.fittingDate) : null],
+      ["Handled by", b.assignedStaff?.name],
+    ]),
     items: b.items.map((i) => ({
       sku: i.garment.sku,
       name: i.garment.name,
+      details: [
+        enumLabel(i.garment.category),
+        i.garment.designer,
+        i.garment.size ? `Size ${i.garment.size}` : null,
+        i.garment.color,
+        i.notes,
+      ]
+        .filter(Boolean)
+        .join(" · "),
+      deposit: Number(i.depositAtBooking) > 0 ? money(i.depositAtBooking) : "—",
       price: money(i.priceAtBooking),
     })),
     totals: [
-      { label: "Rental", value: money(b.rentalFee) },
+      { label: "Rental subtotal", value: money(b.rentalFee) },
       ...(discount > 0 ? [{ label: "Discount", value: `- ${money(discount)}` }] : []),
-      {
-        label: `${b.branch.taxLabel} (${Number(b.branch.taxRate)}%)`,
-        value: money(b.taxAmount),
-      },
+      { label: `${b.branch.taxLabel} (${Number(b.branch.taxRate)}%)`, value: money(b.taxAmount) },
       ...(deliveryFee > 0 ? [{ label: "Delivery", value: money(deliveryFee) }] : []),
       { label: "Total", value: money(b.totalAmount), emphasis: true },
     ],
@@ -83,12 +133,20 @@ async function loadInvoiceView(bookingId: string, invoiceNumber: string, issuedA
     payments: b.payments.map((p) => ({
       date: format(p.paidAt, "d MMM yyyy"),
       description: `${enumLabel(p.type)} · ${enumLabel(p.method)}`,
+      reference: p.reference,
       amount: money(p.amount),
     })),
     paid: money(b.paidAmount),
     balanceDue: money(balance),
     isPaid: balance <= 0,
-    notes: null,
+    terms: [
+      `Please return all garments by ${date(returnBy)}, in the condition they were received.`,
+      ...(Number(b.depositAmount) > 0
+        ? ["The security deposit is refunded after the garments are returned and inspected."]
+        : []),
+      "Late returns, damage or missing items may be charged against the deposit or invoiced separately.",
+      ...(balance > 0 ? [`The balance of ${money(balance)} is due before pickup.`] : []),
+    ],
   };
 }
 
@@ -114,7 +172,7 @@ export async function getOrCreateCurrentInvoice(bookingId: string, userId: strin
       orderBy: { version: "desc" },
     }),
   ]);
-  if (latest && latest.createdAt >= booking.updatedAt) return latest;
+  if (latest && latest.createdAt >= booking.updatedAt && latest.createdAt >= LAYOUT_UPDATED_AT) return latest;
 
   const version = (latest?.version ?? 0) + 1;
   // "BK-2026-0001" -> "INV-2026-0001", then "INV-2026-0001-2" for later versions.

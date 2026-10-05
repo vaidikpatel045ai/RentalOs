@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Download, Eye, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -97,12 +97,13 @@ export default async function BookingsPage({
                 <TableHead>Status</TableHead>
                 <TableHead>Payment</TableHead>
                 <TableHead className="text-right">Total</TableHead>
+                <TableHead className="text-right">Invoice</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {bookings.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-12 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={8} className="py-12 text-center text-sm text-muted-foreground">
                     No bookings found.
                   </TableCell>
                 </TableRow>
@@ -128,6 +129,29 @@ export default async function BookingsPage({
                       <PaymentStatusBadge status={b.paymentStatus} />
                     </TableCell>
                     <TableCell className="text-right">{formatMoney(b.totalAmount, b.branch.currency)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button asChild variant="ghost" size="icon-sm" title="View invoice">
+                          <a
+                            href={`/api/bookings/${b.id}/invoice`}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label={`View invoice for ${b.bookingNumber}`}
+                          >
+                            <Eye className="size-3.5" />
+                          </a>
+                        </Button>
+                        <Button asChild variant="ghost" size="icon-sm" title="Download invoice">
+                          <a
+                            href={`/api/bookings/${b.id}/invoice?download=1`}
+                            download
+                            aria-label={`Download invoice for ${b.bookingNumber}`}
+                          >
+                            <Download className="size-3.5" />
+                          </a>
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
