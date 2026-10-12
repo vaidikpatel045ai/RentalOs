@@ -329,8 +329,9 @@ model Organization {
   billingNotes     String?
   createdAt        DateTime           @default(now())
 
-  branches Branch[]
-  users    User[]
+  branches       Branch[]
+  users          User[]
+  supportTickets SupportTicket[]
 
   @@map("organizations")
 }
@@ -424,9 +425,11 @@ model User {
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 
-  passwordResetTokens PasswordResetToken[]
-  staffProfile        StaffProfile?
-  customerProfile     Customer?            @relation("CustomerLoginAccount")
+  passwordResetTokens   PasswordResetToken[]
+  supportTicketsCreated SupportTicket[]      @relation("SupportTicketCreatedBy")
+  supportMessages       SupportMessage[]     @relation("SupportMessageAuthor")
+  staffProfile          StaffProfile?
+  customerProfile       Customer?            @relation("CustomerLoginAccount")
 
   assignedBookings      Booking[]            @relation("BookingAssignedStaff")
   assignedAppointments  Appointment[]        @relation("AppointmentAssignedStaff")
@@ -1418,4 +1421,58 @@ model PasswordResetToken {
 
   @@index([userId, createdAt])
   @@map("password_reset_tokens")
+}
+
+/// Platform-wide settings the Platform Admin edits (one row, id "platform").
+model PlatformSettings {
+  id              String   @id @default("platform")
+  supportEmail    String?
+  supportPhone    String? // E.164, for calls
+  supportWhatsapp String? // E.164, for WhatsApp chat
+  supportHours    String? // free text, e.g. "Mon–Sat, 10am–7pm IST"
+  updatedAt       DateTime @updatedAt
+
+  @@map("platform_settings")
+}
+
+enum SupportTicketStatus {
+  OPEN
+  RESOLVED
+}
+
+/// A support conversation between a boutique and the Platform Admin.
+model SupportTicket {
+  id               String              @id @default(cuid())
+  organizationId   String
+  organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdByUserId  String
+  createdBy        User                @relation("SupportTicketCreatedBy", fields: [createdByUserId], references: [id])
+  subject          String
+  status           SupportTicketStatus @default(OPEN)
+  /// Unread flags per side, cleared when that side opens the conversation.
+  unreadByPlatform Boolean             @default(true)
+  unreadByBoutique Boolean             @default(false)
+  lastMessageAt    DateTime            @default(now())
+  createdAt        DateTime            @default(now())
+
+  messages SupportMessage[]
+
+  @@index([organizationId, lastMessageAt])
+  @@index([status, lastMessageAt])
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id           String        @id @default(cuid())
+  ticketId     String
+  ticket       SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorUserId String
+  author       User          @relation("SupportMessageAuthor", fields: [authorUserId], references: [id])
+  /// True when written by the Platform Admin (shown as "Support" to the boutique).
+  fromPlatform Boolean       @default(false)
+  body         String
+  createdAt    DateTime      @default(now())
+
+  @@index([ticketId, createdAt])
+  @@map("support_messages")
 }

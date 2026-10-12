@@ -34,7 +34,8 @@ export type Resource =
   | "documents"
   | "transfers"
   | "expenses"
-  | "profitLoss";
+  | "profitLoss"
+  | "support";
 
 export type Action = "view" | "create" | "update" | "delete" | "approve";
 
@@ -165,6 +166,11 @@ const PERMISSION_MAP: Record<Resource, Partial<Record<Role, Action[]>>> = {
   profitLoss: {
     OWNER: ["view"],
     MANAGER: ["view"],
+  },
+  // Contacting the platform team (you): the people who run the boutique.
+  support: {
+    OWNER: ["view", "create"],
+    MANAGER: ["view", "create"],
   },
 };
 
