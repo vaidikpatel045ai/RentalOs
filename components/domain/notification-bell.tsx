@@ -13,10 +13,13 @@ export function NotificationBell({ unreadCount, notifications }: { unreadCount: 
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
-  function onOpenNotification(id: string, isRead: boolean) {
-    if (isRead) return;
+  function onOpenNotification(n: Notification) {
+    // Support notifications open their conversation; the rest just mark read.
+    const href = n.relatedEntityType === "SupportTicket" && n.relatedEntityId ? `/dashboard/support/${n.relatedEntityId}` : null;
+    if (href) router.push(href);
+    if (n.isRead) return;
     startTransition(async () => {
-      await markNotificationRead(id);
+      await markNotificationRead(n.id);
       router.refresh();
     });
   }
@@ -63,7 +66,7 @@ export function NotificationBell({ unreadCount, notifications }: { unreadCount: 
                 key={n.id}
                 type="button"
                 disabled={isPending}
-                onClick={() => onOpenNotification(n.id, n.isRead)}
+                onClick={() => onOpenNotification(n)}
                 className="flex w-full flex-col gap-0.5 border-b border-border px-4 py-3 text-left last:border-0 hover:bg-accent"
               >
                 <div className="flex items-center gap-2">

@@ -21,6 +21,7 @@ import {
   Receipt,
   TrendingUp,
   ScanLine,
+  LifeBuoy,
   type LucideIcon,
 } from "lucide-react";
 import { can, homeRouteForRole, type Resource } from "@/lib/permissions";
@@ -54,6 +55,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Branches", href: "/dashboard/branches", icon: Building2, resource: "branches" },
   { label: "Settings", href: "/dashboard/settings", icon: Settings, resource: "settings" },
   { label: "Audit Log", href: "/dashboard/audit-log", icon: ScrollText, resource: "auditLog" },
+  { label: "Help & Support", href: "/dashboard/support", icon: LifeBuoy, resource: "support" },
 ];
 
 export function getNavItemsForRole(role: Role): NavItem[] {

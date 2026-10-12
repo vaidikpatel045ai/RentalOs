@@ -177,6 +177,14 @@ const TOURS: Record<string, TourConfig> = {
     ],
   },
 
+  "/dashboard/support": tabTour("dashboard.support", {
+    header: { title: "Help & Support", content: "Reach the Bridal Rental OS team whenever you're stuck." },
+    content: {
+      title: "Message Us",
+      content: "Start a conversation here and we'll reply in the app. Or use WhatsApp, a call or email above.",
+    },
+  }),
+
   "/dashboard/scan": tabTour("dashboard.scan", {
     header: { title: "Scan In / Out", content: "Check garments out to customers and back in by scanning their QR tags." },
     content: {
