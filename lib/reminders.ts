@@ -16,6 +16,10 @@ import { trustedAppUrl } from "@/lib/app-url";
  * "Today" is the server's day, the same window the dashboards count with.
  * Running it twice in a day is safe: a reminder already sent to the same
  * person about the same record within the last 20 hours is skipped.
+ *
+ * The summary emails are opt-in (REMINDER_EMAILS=on) on top of Resend being
+ * configured: the demo boutique's staff addresses are on a domain that
+ * doesn't exist, and daily bounces would hurt the sender's reputation.
  */
 
 const ACTIVE_BOOKING_STATUSES: BookingStatus[] = ["DRAFT", "CONFIRMED", "IN_PROGRESS"];
@@ -214,7 +218,8 @@ export async function runDailyReminders(now = new Date()): Promise<ReminderRunRe
     });
   }
 
-  const { sent, errors } = isEmailConfigured() ? await emailDigests(fresh, now) : { sent: 0, errors: 0 };
+  const emailOn = isEmailConfigured() && process.env.REMINDER_EMAILS === "on";
+  const { sent, errors } = emailOn ? await emailDigests(fresh, now) : { sent: 0, errors: 0 };
 
   return {
     organizations: organizations.length,
