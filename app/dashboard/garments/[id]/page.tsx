@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { format } from "date-fns";
@@ -13,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GarmentStatusBadge } from "@/components/domain/status-badge";
 import { GarmentStatusControl } from "@/components/domain/garment-status-control";
 import { GarmentImageUpload } from "@/components/domain/garment-image-upload";
+import { GarmentPhotoGrid } from "@/components/domain/garment-photo-grid";
 import { GarmentDeleteControl } from "@/components/domain/garment-delete-control";
 import { ConditionReportDialog } from "@/components/domain/condition-report-dialog";
 import { RepairStatusControl } from "@/components/domain/repair-status-control";
@@ -88,13 +88,11 @@ export default async function GarmentDetailPage({ params }: { params: Promise<{ 
                   <Shirt className="size-10" />
                 </div>
               ) : (
-                <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-                  {garment.images.map((img) => (
-                    <div key={img.id} className="relative aspect-square overflow-hidden rounded-md bg-muted">
-                      <Image src={img.url} alt={garment.name} fill className="object-cover" />
-                    </div>
-                  ))}
-                </div>
+                <GarmentPhotoGrid
+                  photos={garment.images.map(({ id, url, isPrimary }) => ({ id, url, isPrimary }))}
+                  garmentName={garment.name}
+                  canEdit={canEdit}
+                />
               )}
             </CardContent>
           </Card>

@@ -8,6 +8,7 @@ import { requireCan, permissionError } from "@/lib/permissions";
 import { garmentSchema, MAX_GARMENT_IMAGES } from "@/lib/validations/garment";
 import { garmentQrValue } from "@/lib/qr";
 import { getStorageAdapter } from "@/lib/storage";
+import { resolveBranchWhere } from "@/lib/tenant";
 import type { GarmentStatus } from "@prisma/client";
 import type { ActionState } from "@/lib/actions/customer-actions";
 
@@ -197,6 +198,12 @@ export async function uploadGarmentImage(garmentId: string, formData: FormData):
   const file = formData.get("file") as File | null;
   if (!file || file.size === 0) return { error: "Choose an image file." };
 
+  const garment = await db.garment.findFirst({
+    where: { id: garmentId, ...(await resolveBranchWhere(session.user)) },
+    select: { id: true },
+  });
+  if (!garment) return { error: "Garment not found." };
+
   // Checked before uploading so a rejected photo never reaches storage.
   if ((await db.garmentImage.count({ where: { garmentId } })) >= MAX_GARMENT_IMAGES) {
     return { error: `This garment already has ${MAX_GARMENT_IMAGES} photos, the most allowed.` };
@@ -216,5 +223,71 @@ export async function uploadGarmentImage(garmentId: string, formData: FormData):
   });
 
   revalidatePath(`/dashboard/garments/${garmentId}`);
+  return {};
+}
+
+/** Loads a photo only if its garment is in a branch this user can reach. */
+async function findReachableGarmentImage(
+  user: Parameters<typeof resolveBranchWhere>[0],
+  imageId: string
+) {
+  return db.garmentImage.findFirst({
+    where: { id: imageId, garment: await resolveBranchWhere(user) },
+  });
+}
+
+export async function deleteGarmentImage(imageId: string): Promise<ActionState> {
+  const session = await auth();
+  if (!session?.user) return { error: "Not authenticated" };
+  const permissionMsg = permissionError(session.user.role, "garments", "update");
+  if (permissionMsg) return { error: permissionMsg };
+
+  const image = await findReachableGarmentImage(session.user, imageId);
+  if (!image) return { error: "Photo not found." };
+
+  // Remove the row, then close the gap in the order; if it was the main
+  // photo, the next one in line takes over so the garment keeps a cover.
+  await db.$transaction(async (tx) => {
+    await tx.garmentImage.delete({ where: { id: image.id } });
+    const rest = await tx.garmentImage.findMany({
+      where: { garmentId: image.garmentId },
+      orderBy: { order: "asc" },
+    });
+    const hasPrimary = rest.some((img) => img.isPrimary);
+    for (const [index, img] of rest.entries()) {
+      const isPrimary = hasPrimary ? img.isPrimary : index === 0;
+      if (img.order !== index || img.isPrimary !== isPrimary) {
+        await tx.garmentImage.update({ where: { id: img.id }, data: { order: index, isPrimary } });
+      }
+    }
+  });
+
+  // The file goes last and failures are ignored: an orphaned file costs a
+  // little storage, while a photo row pointing at nothing would show broken.
+  const storage = getStorageAdapter();
+  const key = storage.keyFromUrl(image.url);
+  if (key) await storage.deleteFile(key).catch(() => {});
+
+  revalidatePath(`/dashboard/garments/${image.garmentId}`);
+  revalidatePath("/dashboard/garments");
+  return {};
+}
+
+export async function setPrimaryGarmentImage(imageId: string): Promise<ActionState> {
+  const session = await auth();
+  if (!session?.user) return { error: "Not authenticated" };
+  const permissionMsg = permissionError(session.user.role, "garments", "update");
+  if (permissionMsg) return { error: permissionMsg };
+
+  const image = await findReachableGarmentImage(session.user, imageId);
+  if (!image) return { error: "Photo not found." };
+
+  await db.$transaction([
+    db.garmentImage.updateMany({ where: { garmentId: image.garmentId }, data: { isPrimary: false } }),
+    db.garmentImage.update({ where: { id: image.id }, data: { isPrimary: true } }),
+  ]);
+
+  revalidatePath(`/dashboard/garments/${image.garmentId}`);
+  revalidatePath("/dashboard/garments");
   return {};
 }
