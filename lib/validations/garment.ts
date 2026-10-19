@@ -74,3 +74,6 @@ export const garmentSchema = z.object({
 });
 
 export type GarmentInput = z.input<typeof garmentSchema>;
+
+/** Most photos one garment can hold; enforced on upload and shown in the UI. */
+export const MAX_GARMENT_IMAGES = 7;

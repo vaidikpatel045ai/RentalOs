@@ -80,7 +80,7 @@ export default async function GarmentDetailPage({ params }: { params: Promise<{ 
           <Card>
             <CardHeader className="flex-row items-center justify-between">
               <CardTitle className="font-heading text-base">Photos</CardTitle>
-              {canEdit && <GarmentImageUpload garmentId={garment.id} />}
+              {canEdit && <GarmentImageUpload garmentId={garment.id} imageCount={garment.images.length} />}
             </CardHeader>
             <CardContent>
               {garment.images.length === 0 ? (
