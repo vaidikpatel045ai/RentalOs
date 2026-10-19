@@ -12,7 +12,7 @@ export default async function EditSupplierPage({ params }: { params: Promise<{ i
   if (!session?.user || !can(session.user.role, "suppliers", "update")) {
     redirect("/dashboard/suppliers");
   }
-  const supplier = await db.supplier.findUnique({ where: { id } });
+  const supplier = await db.supplier.findFirst({ where: { id, organizationId: session!.user.organizationId ?? "" } });
   if (!supplier) notFound();
 
   return (

@@ -9,6 +9,7 @@ import { conditionReportSchema, damageChargeSchema } from "@/lib/validations/con
 import { getStorageAdapter } from "@/lib/storage";
 import { notifyUsers } from "@/lib/notify";
 import type { ActionState } from "@/lib/actions/customer-actions";
+import { branchScope, reachBooking, reachDamageCharge, reachGarment, reachRepair } from "@/lib/scope";
 import type { DamageChargeStatus, RepairStatus } from "@prisma/client";
 
 /**
@@ -24,6 +25,8 @@ export async function createConditionReport(garmentId: string, _prev: ActionStat
   const permissionMsg = permissionError(session.user.role, "conditionReports", "create");
   if (permissionMsg) return { error: permissionMsg };
 
+  if (!(await reachGarment(session.user, garmentId))) return { error: "Garment not found." };
+
   const raw = Object.fromEntries(formData.entries());
   const parsed = conditionReportSchema.safeParse({
     ...raw,
@@ -31,6 +34,10 @@ export async function createConditionReport(garmentId: string, _prev: ActionStat
   });
   if (!parsed.success) {
     return { error: "Please fix the errors below.", fieldErrors: parsed.error.flatten().fieldErrors };
+  }
+
+  if (parsed.data.bookingId && !(await reachBooking(session.user, parsed.data.bookingId))) {
+    return { error: "Booking not found." };
   }
 
   const hasDamage = parsed.data.damageCategories.length > 0;
@@ -102,7 +109,20 @@ export async function createDamageCharge(_prev: ActionState, formData: FormData)
     return { error: "Please fix the errors below.", fieldErrors: parsed.error.flatten().fieldErrors };
   }
 
-  const booking = await db.booking.findUniqueOrThrow({ where: { id: parsed.data.bookingId } });
+  if (!(await reachBooking(session.user, parsed.data.bookingId))) return { error: "Booking not found." };
+  if (
+    parsed.data.conditionReportId &&
+    !(await db.garmentConditionReport.findFirst({
+      where: { id: parsed.data.conditionReportId, garment: await branchScope(session.user) },
+      select: { id: true },
+    }))
+  ) {
+    return { error: "Condition report not found." };
+  }
+  const booking = await db.booking.findUniqueOrThrow({
+    where: { id: parsed.data.bookingId },
+    include: { branch: { select: { organizationId: true } } },
+  });
 
   await db.damageCharge.create({
     data: {
@@ -115,7 +135,12 @@ export async function createDamageCharge(_prev: ActionState, formData: FormData)
   });
 
   const approvers = await db.user.findMany({
-    where: { OR: [{ role: "OWNER" }, { role: "MANAGER", branchId: booking.branchId }] },
+    // This boutique's owner(s) and this branch's managers, never other boutiques'.
+    where: {
+      organizationId: booking.branch.organizationId,
+      isActive: true,
+      OR: [{ role: "OWNER" }, { role: "MANAGER", branchId: booking.branchId }],
+    },
     select: { id: true },
   });
   await notifyUsers(
@@ -142,6 +167,7 @@ export async function updateDamageChargeStatus(
   if (!session?.user) return { error: "Not authenticated" };
   const permissionMsg = permissionError(session.user.role, "conditionReports", "update");
   if (permissionMsg) return { error: permissionMsg };
+  if (!(await reachDamageCharge(session.user, chargeId))) return { error: "Damage charge not found." };
 
   const charge = await db.damageCharge.update({
     where: { id: chargeId },
@@ -161,6 +187,7 @@ export async function updateRepairStatus(repairId: string, status: RepairStatus,
   if (!session?.user) throw new Error("Not authenticated");
   requireCan(session.user.role, "conditionReports", "update");
 
+  if (!(await reachRepair(session.user, repairId))) throw new Error("Repair not found.");
   const repair = await db.garmentRepair.findUniqueOrThrow({ where: { id: repairId } });
   const finalCost = cost ?? Number(repair.cost);
 

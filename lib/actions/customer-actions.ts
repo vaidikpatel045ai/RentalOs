@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { permissionError } from "@/lib/permissions";
 import { customerSchema, measurementSchema } from "@/lib/validations/customer";
+import { canUseBranch, reachCustomer } from "@/lib/scope";
 
 export type ActionState = { error?: string; fieldErrors?: Record<string, string[]> };
 
@@ -23,6 +24,7 @@ export async function createCustomer(_prev: ActionState, formData: FormData): Pr
   if (!parsed.success) {
     return { error: "Please fix the errors below.", fieldErrors: parsed.error.flatten().fieldErrors };
   }
+  if (!(await canUseBranch(session.user, parsed.data.branchId))) return { error: "Choose one of your branches." };
 
   const customer = await db.customer.create({
     data: {
@@ -66,6 +68,8 @@ export async function updateCustomer(customerId: string, _prev: ActionState, for
   if (!parsed.success) {
     return { error: "Please fix the errors below.", fieldErrors: parsed.error.flatten().fieldErrors };
   }
+  if (!(await reachCustomer(session.user, customerId))) return { error: "Customer not found." };
+  if (!(await canUseBranch(session.user, parsed.data.branchId))) return { error: "Choose one of your branches." };
 
   await db.customer.update({
     where: { id: customerId },
@@ -101,6 +105,8 @@ export async function addMeasurement(customerId: string, _prev: ActionState, for
   if (!session?.user) return { error: "Not authenticated" };
   const permissionMsg = permissionError(session.user.role, "customers", "update");
   if (permissionMsg) return { error: permissionMsg };
+
+  if (!(await reachCustomer(session.user, customerId))) return { error: "Customer not found." };
 
   const raw = Object.fromEntries(formData.entries());
   const parsed = measurementSchema.safeParse({ ...raw, customerId, verified: raw.verified === "on" });

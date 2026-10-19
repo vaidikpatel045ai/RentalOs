@@ -9,6 +9,7 @@ import { garmentSchema, MAX_GARMENT_IMAGES } from "@/lib/validations/garment";
 import { garmentQrValue } from "@/lib/qr";
 import { getStorageAdapter } from "@/lib/storage";
 import { resolveBranchWhere } from "@/lib/tenant";
+import { canUseBranch, reachGarment } from "@/lib/scope";
 import type { GarmentStatus } from "@prisma/client";
 import type { ActionState } from "@/lib/actions/customer-actions";
 
@@ -22,6 +23,11 @@ export async function createGarment(_prev: ActionState, formData: FormData): Pro
   const parsed = garmentSchema.safeParse(raw);
   if (!parsed.success) {
     return { error: "Please fix the errors below.", fieldErrors: parsed.error.flatten().fieldErrors };
+  }
+
+  if (!(await canUseBranch(session.user, parsed.data.branchId))) return { error: "Choose one of your branches." };
+  if (parsed.data.parentGarmentId && !(await reachGarment(session.user, parsed.data.parentGarmentId))) {
+    return { error: "Parent garment not found." };
   }
 
   const existing = await db.garment.findUnique({ where: { sku: parsed.data.sku } });
@@ -75,6 +81,11 @@ export async function updateGarment(garmentId: string, _prev: ActionState, formD
   if (!parsed.success) {
     return { error: "Please fix the errors below.", fieldErrors: parsed.error.flatten().fieldErrors };
   }
+  if (!(await reachGarment(session.user, garmentId))) return { error: "Garment not found." };
+  if (!(await canUseBranch(session.user, parsed.data.branchId))) return { error: "Choose one of your branches." };
+  if (parsed.data.parentGarmentId && !(await reachGarment(session.user, parsed.data.parentGarmentId))) {
+    return { error: "Parent garment not found." };
+  }
 
   await db.garment.update({
     where: { id: garmentId },
@@ -96,6 +107,7 @@ export async function changeGarmentStatus(garmentId: string, newStatus: GarmentS
   if (!session?.user) throw new Error("Not authenticated");
   requireCan(session.user.role, "garments", "update");
 
+  if (!(await reachGarment(session.user, garmentId))) throw new Error("Garment not found.");
   const garment = await db.garment.findUniqueOrThrow({ where: { id: garmentId } });
 
   await db.$transaction([
@@ -137,6 +149,7 @@ export async function deleteGarment(garmentId: string, notes?: string) {
   if (!session?.user) throw new Error("Not authenticated");
   requireCan(session.user.role, "garments", "delete");
 
+  if (!(await reachGarment(session.user, garmentId))) throw new Error("Garment not found.");
   const garment = await db.garment.findUniqueOrThrow({ where: { id: garmentId } });
   if (garment.currentStatus === "WITH_CUSTOMER" || garment.currentStatus === "OUT_FOR_DELIVERY") {
     throw new Error("This garment is currently with a customer — it can't be removed from inventory yet.");
@@ -167,6 +180,7 @@ export async function restoreGarment(garmentId: string) {
   if (!session?.user) throw new Error("Not authenticated");
   requireCan(session.user.role, "garments", "update");
 
+  if (!(await reachGarment(session.user, garmentId))) throw new Error("Garment not found.");
   const garment = await db.garment.findUniqueOrThrow({ where: { id: garmentId } });
 
   await db.$transaction([
@@ -198,11 +212,7 @@ export async function uploadGarmentImage(garmentId: string, formData: FormData):
   const file = formData.get("file") as File | null;
   if (!file || file.size === 0) return { error: "Choose an image file." };
 
-  const garment = await db.garment.findFirst({
-    where: { id: garmentId, ...(await resolveBranchWhere(session.user)) },
-    select: { id: true },
-  });
-  if (!garment) return { error: "Garment not found." };
+  if (!(await reachGarment(session.user, garmentId))) return { error: "Garment not found." };
 
   // Checked before uploading so a rejected photo never reaches storage.
   if ((await db.garmentImage.count({ where: { garmentId } })) >= MAX_GARMENT_IMAGES) {

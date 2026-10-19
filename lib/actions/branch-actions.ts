@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { permissionError } from "@/lib/permissions";
 import { branchSchema, branchSettingsSchema } from "@/lib/validations/branch";
 import type { ActionState } from "@/lib/actions/customer-actions";
+import { canUseBranch } from "@/lib/scope";
 
 export async function createBranch(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const session = await auth();
@@ -55,6 +56,7 @@ export async function updateBranch(branchId: string, _prev: ActionState, formDat
   if (!parsed.success) {
     return { error: "Please fix the errors below.", fieldErrors: parsed.error.flatten().fieldErrors };
   }
+  if (!(await canUseBranch(session.user, branchId))) return { error: "Branch not found." };
 
   await db.branch.update({
     where: { id: branchId },
@@ -85,6 +87,7 @@ export async function updateBranchSettings(_prev: ActionState, formData: FormDat
     return { error: "Please fix the errors below.", fieldErrors: parsed.error.flatten().fieldErrors };
   }
   const { branchId, taxRate, taxLabel, ...settings } = parsed.data;
+  if (!(await canUseBranch(session.user, branchId))) return { error: "Branch not found." };
 
   await db.$transaction([
     db.branchSettings.upsert({

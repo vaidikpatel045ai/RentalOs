@@ -16,9 +16,12 @@ import { GarmentPhotoGrid } from "@/components/domain/garment-photo-grid";
 import { GarmentDeleteControl } from "@/components/domain/garment-delete-control";
 import { ConditionReportDialog } from "@/components/domain/condition-report-dialog";
 import { RepairStatusControl } from "@/components/domain/repair-status-control";
+import { reachGarment } from "@/lib/scope";
 
 export default async function GarmentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const viewer = await auth();
+  if (!viewer?.user || !(await reachGarment(viewer.user, id))) notFound();
   const garment = await db.garment.findUnique({
     where: { id },
     include: {
@@ -37,7 +40,7 @@ export default async function GarmentDetailPage({ params }: { params: Promise<{ 
   });
   if (!garment) notFound();
 
-  const session = await auth();
+  const session = viewer;
   const canEdit = Boolean(session?.user && can(session.user.role, "garments", "update"));
   const canDelete = Boolean(session?.user && can(session.user.role, "garments", "delete"));
   const canInspect = Boolean(session?.user && can(session.user.role, "conditionReports", "create"));

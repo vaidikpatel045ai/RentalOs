@@ -8,6 +8,7 @@ import { requireCan, permissionError } from "@/lib/permissions";
 import { transferSchema } from "@/lib/validations/transfer";
 import { notifyUsers } from "@/lib/notify";
 import type { ActionState } from "@/lib/actions/customer-actions";
+import { isOrganizationBranch, reachGarment, reachTransfer } from "@/lib/scope";
 
 export async function requestTransfer(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const session = await auth();
@@ -21,6 +22,10 @@ export async function requestTransfer(_prev: ActionState, formData: FormData): P
     return { error: "Please fix the errors below.", fieldErrors: parsed.error.flatten().fieldErrors };
   }
 
+  if (!(await reachGarment(session.user, parsed.data.garmentId))) return { error: "Garment not found." };
+  if (!(await isOrganizationBranch(session.user, parsed.data.toBranchId))) {
+    return { error: "Choose one of your branches." };
+  }
   const garment = await db.garment.findUniqueOrThrow({ where: { id: parsed.data.garmentId } });
   if (garment.branchId === parsed.data.toBranchId) {
     return { error: "This garment is already at that branch." };
@@ -36,7 +41,10 @@ export async function requestTransfer(_prev: ActionState, formData: FormData): P
     },
   });
 
-  const owners = await db.user.findMany({ where: { role: "OWNER" }, select: { id: true } });
+  const owners = await db.user.findMany({
+    where: { role: "OWNER", organizationId: session.user.organizationId, isActive: true },
+    select: { id: true },
+  });
   await notifyUsers(
     owners.map((u) => u.id),
     {
@@ -57,6 +65,7 @@ export async function approveTransfer(transferId: string) {
   const session = await auth();
   if (!session?.user) throw new Error("Not authenticated");
   requireCan(session.user.role, "transfers", "approve");
+  if (!(await reachTransfer(session.user, transferId))) throw new Error("Transfer not found.");
 
   await db.inventoryTransfer.update({
     where: { id: transferId },
@@ -71,6 +80,7 @@ export async function rejectTransfer(transferId: string) {
   const session = await auth();
   if (!session?.user) throw new Error("Not authenticated");
   requireCan(session.user.role, "transfers", "approve");
+  if (!(await reachTransfer(session.user, transferId))) throw new Error("Transfer not found.");
 
   await db.inventoryTransfer.update({
     where: { id: transferId },
@@ -85,6 +95,7 @@ export async function markTransferInTransit(transferId: string) {
   const session = await auth();
   if (!session?.user) throw new Error("Not authenticated");
   requireCan(session.user.role, "transfers", "update");
+  if (!(await reachTransfer(session.user, transferId))) throw new Error("Transfer not found.");
 
   await db.inventoryTransfer.update({ where: { id: transferId }, data: { status: "IN_TRANSIT" } });
 
@@ -98,6 +109,7 @@ export async function markTransferReceived(transferId: string) {
   const session = await auth();
   if (!session?.user) throw new Error("Not authenticated");
   requireCan(session.user.role, "transfers", "update");
+  if (!(await reachTransfer(session.user, transferId))) throw new Error("Transfer not found.");
 
   const transfer = await db.inventoryTransfer.findUniqueOrThrow({ where: { id: transferId } });
 

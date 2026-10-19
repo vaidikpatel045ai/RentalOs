@@ -12,6 +12,16 @@ import { snapshotMeasurement, type MeasurementSnapshot } from "@/lib/measurement
 import { getStorageAdapter } from "@/lib/storage";
 import { notifyUser } from "@/lib/notify";
 import type { Prisma } from "@prisma/client";
+import {
+  canUseBranch,
+  reachAssignee,
+  reachBooking,
+  reachCleaningJob,
+  reachCustomer,
+  reachDeliveryJob,
+  reachGarment,
+  reachTailoringJob,
+} from "@/lib/scope";
 
 /** TAILOR/CLEANER may only touch jobs assigned to them; OWNER/MANAGER can
  * always override from the admin boards. Defense-in-depth alongside the
@@ -37,6 +47,7 @@ export async function updateTailoringStatus(jobId: string, status: TailoringStat
   if (!session?.user) throw new Error("Not authenticated");
   requireCan(session.user.role, "tailoring", "update");
 
+  if (!(await reachTailoringJob(session.user, jobId))) throw new Error("Job not found.");
   const job = await db.tailoringJob.findUniqueOrThrow({ where: { id: jobId } });
   assertOwnsJob(session.user.role, job.assignedToUserId, session.user.id);
 
@@ -76,6 +87,7 @@ export async function updateCleaningStatus(jobId: string, status: CleaningStatus
   if (!session?.user) throw new Error("Not authenticated");
   requireCan(session.user.role, "cleaning", "update");
 
+  if (!(await reachCleaningJob(session.user, jobId))) throw new Error("Job not found.");
   const job = await db.garmentCleaningJob.findUniqueOrThrow({ where: { id: jobId } });
   assertOwnsJob(session.user.role, job.assignedToUserId, session.user.id);
 
@@ -117,6 +129,7 @@ export async function updateDeliveryStatus(jobId: string, status: DeliveryStatus
   if (!session?.user) throw new Error("Not authenticated");
   requireCan(session.user.role, "delivery", "update");
 
+  if (!(await reachDeliveryJob(session.user, jobId))) throw new Error("Job not found.");
   const existingJob = await db.deliveryJob.findUniqueOrThrow({ where: { id: jobId } });
   assertOwnsJob(session.user.role, existingJob.assignedDriverId, session.user.id);
 
@@ -131,6 +144,20 @@ export async function updateDeliveryStatus(jobId: string, status: DeliveryStatus
 
   revalidatePath("/portal/delivery");
   revalidatePath("/dashboard/delivery");
+}
+
+/** Every id a tailoring/cleaning job form sends must be in the user's reach,
+ * and the assignee must work for the same boutique. Returns an error message or null. */
+async function checkJobInputs(
+  user: Parameters<typeof reachGarment>[0],
+  data: { branchId: string; garmentId: string; bookingId?: string | null; customerId?: string | null; assignedToUserId?: string | null }
+): Promise<string | null> {
+  if (!(await canUseBranch(user, data.branchId))) return "Choose one of your branches.";
+  if (!(await reachGarment(user, data.garmentId))) return "Garment not found.";
+  if (data.bookingId && !(await reachBooking(user, data.bookingId))) return "Booking not found.";
+  if (data.customerId && !(await reachCustomer(user, data.customerId))) return "Customer not found.";
+  if (data.assignedToUserId && !(await reachAssignee(user, data.assignedToUserId))) return "Assigned staff member not found.";
+  return null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -149,6 +176,8 @@ export async function createTailoringJob(_prev: ActionState, formData: FormData)
     return { error: "Please fix the errors below.", fieldErrors: parsed.error.flatten().fieldErrors };
   }
   const { hem, bust, waist, straps, length, notes, ...data } = parsed.data;
+  const scopeError = await checkJobInputs(session.user, data);
+  if (scopeError) return { error: scopeError };
 
   const instructions: Record<string, string> = {};
   if (hem) instructions.hem = hem;
@@ -227,6 +256,8 @@ export async function createCleaningJob(_prev: ActionState, formData: FormData):
     return { error: "Please fix the errors below.", fieldErrors: parsed.error.flatten().fieldErrors };
   }
   const data = parsed.data;
+  const scopeError = await checkJobInputs(session.user, data);
+  if (scopeError) return { error: scopeError };
   const garment = await db.garment.findUniqueOrThrow({ where: { id: data.garmentId } });
 
   await db.$transaction(async (tx) => {
@@ -303,6 +334,10 @@ export async function createDeliveryJob(_prev: ActionState, formData: FormData):
     return { error: "Please fix the errors below.", fieldErrors: parsed.error.flatten().fieldErrors };
   }
   const data = parsed.data;
+  if (!(await reachBooking(session.user, data.bookingId))) return { error: "Booking not found." };
+  if (data.assignedDriverId && !(await reachAssignee(session.user, data.assignedDriverId))) {
+    return { error: "Driver not found." };
+  }
 
   // Retry on the rare race where two jobs are created concurrently and both
   // compute the same "next" number before either commits.
@@ -361,6 +396,7 @@ export async function addTailoringNote(jobId: string, formData: FormData): Promi
   const updatePermMsg = permissionError(session.user.role, "tailoring", "update");
   if (updatePermMsg) return { error: updatePermMsg };
 
+  if (!(await reachTailoringJob(session.user, jobId))) return { error: "Job not found." };
   const job = await db.tailoringJob.findUniqueOrThrow({ where: { id: jobId } });
   try {
     assertOwnsJob(session.user.role, job.assignedToUserId, session.user.id);
@@ -401,6 +437,7 @@ export async function addCleaningPhoto(jobId: string, kind: "before" | "after", 
   const updatePermMsg = permissionError(session.user.role, "cleaning", "update");
   if (updatePermMsg) return { error: updatePermMsg };
 
+  if (!(await reachCleaningJob(session.user, jobId))) return { error: "Job not found." };
   const job = await db.garmentCleaningJob.findUniqueOrThrow({ where: { id: jobId } });
   try {
     assertOwnsJob(session.user.role, job.assignedToUserId, session.user.id);
@@ -437,6 +474,7 @@ export async function updateCleaningDetails(jobId: string, input: { cost?: numbe
   const updatePermMsg = permissionError(session.user.role, "cleaning", "update");
   if (updatePermMsg) return { error: updatePermMsg };
 
+  if (!(await reachCleaningJob(session.user, jobId))) return { error: "Job not found." };
   const job = await db.garmentCleaningJob.findUniqueOrThrow({ where: { id: jobId } });
   try {
     assertOwnsJob(session.user.role, job.assignedToUserId, session.user.id);

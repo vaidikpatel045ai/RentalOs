@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { checkAvailability } from "@/lib/availability-engine";
+import { reachGarment } from "@/lib/scope";
 
 export async function GET(request: Request) {
   const session = await auth();
@@ -14,6 +15,10 @@ export async function GET(request: Request) {
 
   if (!garmentId || !start || !end) {
     return NextResponse.json({ error: "garmentId, start and end are required" }, { status: 400 });
+  }
+
+  if (!(await reachGarment(session.user, garmentId))) {
+    return NextResponse.json({ error: "Garment not found" }, { status: 404 });
   }
 
   const result = await checkAvailability({

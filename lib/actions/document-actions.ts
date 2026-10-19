@@ -7,6 +7,7 @@ import { requireCan, permissionError } from "@/lib/permissions";
 import { documentUploadSchema } from "@/lib/validations/document";
 import { getStorageAdapter } from "@/lib/storage";
 import type { ActionState } from "@/lib/actions/customer-actions";
+import { reachBooking, reachCustomer, reachDocument, reachGarment } from "@/lib/scope";
 
 export async function uploadDocument(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const session = await auth();
@@ -24,6 +25,14 @@ export async function uploadDocument(_prev: ActionState, formData: FormData): Pr
   }
   if (!parsed.data.customerId && !parsed.data.bookingId && !parsed.data.garmentId) {
     return { error: "Document must be linked to a customer, booking, or garment." };
+  }
+  const { customerId, bookingId, garmentId } = parsed.data;
+  if (
+    (customerId && !(await reachCustomer(session.user, customerId))) ||
+    (bookingId && !(await reachBooking(session.user, bookingId))) ||
+    (garmentId && !(await reachGarment(session.user, garmentId)))
+  ) {
+    return { error: "The record this document belongs to wasn't found." };
   }
 
   const entityFolder = parsed.data.customerId
@@ -61,6 +70,7 @@ export async function deleteDocument(id: string, revalidatePathTarget: string) {
   const session = await auth();
   if (!session?.user) throw new Error("Not authenticated");
   requireCan(session.user.role, "documents", "delete");
+  if (!(await reachDocument(session.user, id))) throw new Error("Document not found.");
 
   await db.document.delete({ where: { id } });
   revalidatePath(revalidatePathTarget);
