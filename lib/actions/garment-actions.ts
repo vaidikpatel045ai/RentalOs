@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { requireCan, permissionError } from "@/lib/permissions";
-import { garmentSchema } from "@/lib/validations/garment";
+import { garmentSchema, MAX_GARMENT_IMAGES } from "@/lib/validations/garment";
 import { garmentQrValue } from "@/lib/qr";
 import { getStorageAdapter } from "@/lib/storage";
 import type { GarmentStatus } from "@prisma/client";
@@ -196,6 +196,11 @@ export async function uploadGarmentImage(garmentId: string, formData: FormData):
 
   const file = formData.get("file") as File | null;
   if (!file || file.size === 0) return { error: "Choose an image file." };
+
+  // Checked before uploading so a rejected photo never reaches storage.
+  if ((await db.garmentImage.count({ where: { garmentId } })) >= MAX_GARMENT_IMAGES) {
+    return { error: `This garment already has ${MAX_GARMENT_IMAGES} photos, the most allowed.` };
+  }
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const storage = getStorageAdapter();
