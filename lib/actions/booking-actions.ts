@@ -9,6 +9,7 @@ import { permissionError } from "@/lib/permissions";
 import { bookingSchema, type BookingInput } from "@/lib/validations/booking";
 import { checkAvailability, findOverlappingBooking } from "@/lib/availability-engine";
 import type { ActionState } from "@/lib/actions/customer-actions";
+import { canUseBranch, reachAssignee, reachCustomer, reachGarment } from "@/lib/scope";
 
 export interface BookingActionState extends ActionState {
   requiresConfirmation?: boolean;
@@ -45,6 +46,15 @@ export async function createBooking(input: BookingInput): Promise<BookingActionS
     return { error: "Please fix the errors below.", fieldErrors: parsed.error.flatten().fieldErrors };
   }
   const data = parsed.data;
+
+  if (!(await canUseBranch(session.user, data.branchId))) return { error: "Choose one of your branches." };
+  if (!(await reachCustomer(session.user, data.customerId))) return { error: "Customer not found." };
+  for (const item of data.items) {
+    if (!(await reachGarment(session.user, item.garmentId))) return { error: "One of the garments wasn't found." };
+  }
+  if (data.assignedStaffId && !(await reachAssignee(session.user, data.assignedStaffId))) {
+    return { error: "Assigned staff member not found." };
+  }
 
   // 1. Advisory risk check per garment (UI already showed this; re-verify).
   const riskReasons: string[] = [];

@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { permissionError } from "@/lib/permissions";
 import { appointmentSchema } from "@/lib/validations/appointment";
 import type { ActionState } from "@/lib/actions/customer-actions";
+import { canUseBranch, reachAssignee, reachBooking, reachCustomer } from "@/lib/scope";
 
 export async function createAppointment(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const session = await auth();
@@ -18,6 +19,13 @@ export async function createAppointment(_prev: ActionState, formData: FormData):
   const parsed = appointmentSchema.safeParse(raw);
   if (!parsed.success) {
     return { error: "Please fix the errors below.", fieldErrors: parsed.error.flatten().fieldErrors };
+  }
+  const { branchId, customerId, bookingId, assignedStaffId } = parsed.data;
+  if (!(await canUseBranch(session.user, branchId))) return { error: "Choose one of your branches." };
+  if (!(await reachCustomer(session.user, customerId))) return { error: "Customer not found." };
+  if (bookingId && !(await reachBooking(session.user, bookingId))) return { error: "Booking not found." };
+  if (assignedStaffId && !(await reachAssignee(session.user, assignedStaffId))) {
+    return { error: "Assigned staff member not found." };
   }
 
   await db.appointment.create({

@@ -6,6 +6,7 @@ import { can } from "@/lib/permissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GarmentForm } from "@/components/domain/garment-form";
 import { updateGarment } from "@/lib/actions/garment-actions";
+import { reachGarment } from "@/lib/scope";
 
 export default async function EditGarmentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -17,7 +18,7 @@ export default async function EditGarmentPage({ params }: { params: Promise<{ id
     db.garment.findUnique({ where: { id } }),
     getCachedBranches(session!.user.organizationId!),
   ]);
-  if (!garment) notFound();
+  if (!garment || !(await reachGarment(session!.user, id))) notFound();
 
   return (
     <div className="max-w-3xl space-y-6">

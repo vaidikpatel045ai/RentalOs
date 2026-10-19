@@ -332,6 +332,7 @@ model Organization {
   branches       Branch[]
   users          User[]
   supportTickets SupportTicket[]
+  suppliers      Supplier[]
 
   @@map("organizations")
 }
@@ -1255,15 +1256,18 @@ model PackageItem {
 }
 
 model Supplier {
-  id          String   @id @default(cuid())
-  name        String
-  contactName String?
-  phone       String?
-  email       String?
-  address     String?
-  notes       String?
-  createdAt   DateTime @default(now())
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  contactName    String?
+  phone          String?
+  email          String?
+  address        String?
+  notes          String?
+  createdAt      DateTime     @default(now())
 
+  @@index([organizationId])
   @@map("suppliers")
 }
 

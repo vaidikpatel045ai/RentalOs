@@ -22,14 +22,18 @@ export default async function SuppliersPage({
   const canCreate = Boolean(session?.user && can(session.user.role, "suppliers", "create"));
   const canDelete = Boolean(session?.user && can(session.user.role, "suppliers", "delete"));
 
-  const where = q
-    ? {
-        OR: [
-          { name: { contains: q, mode: "insensitive" as const } },
-          { contactName: { contains: q, mode: "insensitive" as const } },
-        ],
-      }
-    : {};
+  // Only this boutique's suppliers.
+  const where = {
+    organizationId: session?.user.organizationId ?? "",
+    ...(q
+      ? {
+          OR: [
+            { name: { contains: q, mode: "insensitive" as const } },
+            { contactName: { contains: q, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
+  };
 
   const [suppliers, totalCount] = await Promise.all([
     db.supplier.findMany({ where, orderBy: { name: "asc" }, skip, take }),

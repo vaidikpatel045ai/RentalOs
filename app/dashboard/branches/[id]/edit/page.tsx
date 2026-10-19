@@ -5,6 +5,7 @@ import { can } from "@/lib/permissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BranchForm } from "@/components/domain/branch-form";
 import { updateBranch } from "@/lib/actions/branch-actions";
+import { canUseBranch } from "@/lib/scope";
 
 export default async function EditBranchPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -13,7 +14,7 @@ export default async function EditBranchPage({ params }: { params: Promise<{ id:
     redirect("/dashboard/branches");
   }
   const branch = await db.branch.findUnique({ where: { id } });
-  if (!branch) notFound();
+  if (!branch || !(await canUseBranch(session!.user, id))) notFound();
 
   return (
     <div className="max-w-3xl space-y-6">
