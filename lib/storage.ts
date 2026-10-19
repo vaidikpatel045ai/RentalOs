@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
-import { mkdir, readFile, writeFile } from "fs/promises";
+import { mkdir, readFile, rm, writeFile } from "fs/promises";
 import path from "path";
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 /**
  * Storage adapter abstraction. Production should point this at an
@@ -23,6 +23,10 @@ export interface StorageAdapter {
   uploadFile(file: Buffer, opts: { filename: string; contentType: string; folder: string }): Promise<UploadResult>;
   /** Reads back a file previously stored under `key`. */
   getFile(key: string): Promise<Buffer>;
+  /** Removes a stored file. Missing files are not an error. */
+  deleteFile(key: string): Promise<void>;
+  /** The storage key behind a URL this adapter returned, or null if it isn't one of ours. */
+  keyFromUrl(url: string): string | null;
 }
 
 class LocalDiskStorageAdapter implements StorageAdapter {
@@ -43,6 +47,17 @@ class LocalDiskStorageAdapter implements StorageAdapter {
     const fullPath = path.join(root, key);
     if (!fullPath.startsWith(root + path.sep)) throw new Error("Invalid storage key");
     return readFile(fullPath);
+  }
+
+  async deleteFile(key: string): Promise<void> {
+    const root = path.join(process.cwd(), "public", "uploads");
+    const fullPath = path.join(root, key);
+    if (!fullPath.startsWith(root + path.sep)) throw new Error("Invalid storage key");
+    await rm(fullPath, { force: true });
+  }
+
+  keyFromUrl(url: string): string | null {
+    return url.startsWith("/uploads/") ? url.slice("/uploads/".length) : null;
   }
 }
 
@@ -103,6 +118,15 @@ class S3StorageAdapter implements StorageAdapter {
     const object = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
     if (!object.Body) throw new Error(`Empty object: ${key}`);
     return Buffer.from(await object.Body.transformToByteArray());
+  }
+
+  async deleteFile(key: string): Promise<void> {
+    await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
+  }
+
+  keyFromUrl(url: string): string | null {
+    const prefix = `${this.publicBaseUrl}/`;
+    return url.startsWith(prefix) ? url.slice(prefix.length) : null;
   }
 }
 
