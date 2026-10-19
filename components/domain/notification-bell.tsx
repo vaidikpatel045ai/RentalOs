@@ -14,8 +14,14 @@ export function NotificationBell({ unreadCount, notifications }: { unreadCount: 
   const router = useRouter();
 
   function onOpenNotification(n: Notification) {
-    // Support notifications open their conversation; the rest just mark read.
-    const href = n.relatedEntityType === "SupportTicket" && n.relatedEntityId ? `/dashboard/support/${n.relatedEntityId}` : null;
+    // Support and booking notifications open their record; the rest just mark read.
+    const href = !n.relatedEntityId
+      ? null
+      : n.relatedEntityType === "SupportTicket"
+        ? `/dashboard/support/${n.relatedEntityId}`
+        : n.relatedEntityType === "Booking"
+          ? `/dashboard/bookings/${n.relatedEntityId}`
+          : null;
     if (href) router.push(href);
     if (n.isRead) return;
     startTransition(async () => {
