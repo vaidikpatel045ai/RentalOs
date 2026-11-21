@@ -4,11 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Role } from "@prisma/client";
 import { cn } from "@/lib/utils";
-import { getNavItemsForRole } from "@/lib/nav-config";
+import { getNavItemsForRole, type NavFeatures } from "@/lib/nav-config";
 
-export function AppSidebar({ role }: { role: Role }) {
+export function AppSidebar({ role, features }: { role: Role; features: NavFeatures }) {
   const pathname = usePathname();
-  const items = getNavItemsForRole(role);
+  const items = getNavItemsForRole(role, features);
 
   return (
     <aside className="sticky top-0 hidden h-svh w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">

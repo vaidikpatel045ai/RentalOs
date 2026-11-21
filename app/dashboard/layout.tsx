@@ -25,9 +25,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect("/suspended");
   }
 
+  const features = { photography: Boolean(organization?.photographyEnabled) };
+
   return (
     <div className="flex min-h-svh">
-      <AppSidebar role={session.user.role} />
+      <AppSidebar role={session.user.role} features={features} />
       <div className="flex min-h-svh min-w-0 flex-1 flex-col">
         <AppTopbar
           name={session.user.name ?? session.user.email ?? "User"}
@@ -36,6 +38,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           branchName={session.user.role === "OWNER" ? "All Branches" : branch?.name}
           unreadCount={unreadCount}
           notifications={notifications}
+          features={features}
         />
         <main className="flex-1 bg-background p-4 md:p-8">{children}</main>
       </div>

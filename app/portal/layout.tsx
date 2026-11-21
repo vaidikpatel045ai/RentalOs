@@ -10,9 +10,10 @@ import { PageTour } from "@/components/tour/page-tour";
 import { getUnreadNotificationCount, getRecentNotifications } from "@/lib/queries/notifications";
 import { getOrganizationForUser, isOrganizationActive } from "@/lib/tenant";
 import { enforceSessionValidity } from "@/lib/session-guard";
+import { homeRouteForRole } from "@/lib/permissions";
 
 // Shared shell for the mobile-first operational portals (Tailor, Cleaner,
-// Delivery, Customer). Deliberately minimal — no admin sidebar — per spec
+// Delivery, Photographer, Customer). Deliberately minimal — no admin sidebar — per spec
 // section 41 ("Do NOT overwhelm the tailor or cleaner with admin
 // functionality"). This gives every role a real, branded landing spot
 // after login instead of a dead end.
@@ -44,7 +45,7 @@ export default async function PortalLayout({ children }: { children: React.React
         <span className="font-heading text-lg tracking-tight">Bridal Rental OS</span>
         <div className="flex items-center gap-3">
           <PageTour />
-          <NotificationBell unreadCount={unreadCount} notifications={notifications} />
+          <NotificationBell unreadCount={unreadCount} notifications={notifications} portalHome={homeRouteForRole(session.user.role)} />
           <div className="hidden items-center gap-2 sm:flex">
             <Avatar className="size-7">
               <AvatarFallback className="bg-gold/15 text-xs text-gold">{initials}</AvatarFallback>

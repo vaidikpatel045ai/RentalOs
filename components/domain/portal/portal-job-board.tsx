@@ -19,9 +19,12 @@ const TILES: { key: GroupKey; label: string; accent: string }[] = [
 export function PortalJobBoard({
   groups,
   emptyText,
+  labels,
 }: {
   groups: Record<GroupKey, React.ReactNode[]>;
   emptyText: Record<GroupKey, string>;
+  /** Renames the tiles, e.g. "To deliver" instead of "Overdue" for photographers. */
+  labels?: Partial<Record<GroupKey, string>>;
 }) {
   const initial: GroupKey = groups.overdue.length > 0 ? "overdue" : groups.today.length > 0 ? "today" : "upcoming";
 
@@ -40,7 +43,7 @@ export function PortalJobBoard({
               "data-[state=active]:border-foreground/70 data-[state=active]:bg-card data-[state=active]:shadow-sm"
             )}
           >
-            <span className="text-xs font-normal text-muted-foreground">{tile.label}</span>
+            <span className="text-xs font-normal text-muted-foreground">{labels?.[tile.key] ?? tile.label}</span>
             <span className={cn("font-heading text-2xl leading-tight", groups[tile.key].length > 0 ? tile.accent : "text-muted-foreground")}>
               {groups[tile.key].length}
             </span>

@@ -6,7 +6,7 @@ import { formatMoney } from "@/lib/currency";
  * (money pre-formatted here) — this crosses the unstable_cache JSON boundary
  * and is passed to a client component, so no Date/Decimal values inside. */
 export interface CalendarEventDetails {
-  kind: "Appointment" | "Pickup" | "Return";
+  kind: "Appointment" | "Pickup" | "Return" | "Photoshoot";
   subtype: string;
   status: string;
   customerName: string;
@@ -30,7 +30,7 @@ export interface CalendarEvent {
   id: string;
   date: Date;
   label: string;
-  type: "appointment" | "pickup" | "return" | "fitting" | "trial";
+  type: "appointment" | "pickup" | "return" | "fitting" | "trial" | "shoot";
   href: string;
   details: CalendarEventDetails;
 }
@@ -54,7 +54,11 @@ async function computeCalendarEvents(
   const rangeEnd = new Date(rangeEndIso);
   const branchWhere = branchId ? { branchId } : { branch: { organizationId } };
 
-  const [appointments, pickups, returns] = await Promise.all([
+  const photography = Boolean(
+    (await db.organization.findUnique({ where: { id: organizationId }, select: { photographyEnabled: true } }))?.photographyEnabled
+  );
+
+  const [appointments, pickups, returns, shoots] = await Promise.all([
     db.appointment.findMany({
       where: { ...branchWhere, scheduledAt: { gte: rangeStart, lte: rangeEnd }, status: { not: "CANCELLED" } },
       include: { customer: true, branch: true, assignedStaff: true, booking: { select: { id: true, bookingNumber: true } } },
@@ -67,6 +71,12 @@ async function computeCalendarEvents(
       where: { ...branchWhere, returnDate: { gte: rangeStart, lte: rangeEnd }, status: { in: ["CONFIRMED", "IN_PROGRESS"] } },
       include: bookingInclude,
     }),
+    photography
+      ? db.photoShoot.findMany({
+          where: { ...branchWhere, scheduledAt: { gte: rangeStart, lte: rangeEnd }, status: { notIn: ["CANCELLED", "REQUESTED"] } },
+          include: { customer: true, branch: true, photographer: true, service: { select: { name: true } } },
+        })
+      : Promise.resolve([]),
   ]);
 
   const bookingDetails = (b: (typeof pickups)[number], kind: "Pickup" | "Return"): CalendarEventDetails => ({
@@ -134,6 +144,33 @@ async function computeCalendarEvents(
       href: `/dashboard/bookings/${b.id}`,
       details: bookingDetails(b, "Return"),
     })),
+    ...shoots.map((s) => ({
+      id: `shoot-${s.id}`,
+      date: s.scheduledAt.toISOString(),
+      label: `Photoshoot — ${s.customer.firstName} ${s.customer.lastName}`,
+      type: "shoot" as const,
+      href: `/dashboard/photography/${s.id}`,
+      details: {
+        kind: "Photoshoot" as const,
+        subtype: s.service?.name ?? s.type.replaceAll("_", " "),
+        status: s.status.replaceAll("_", " "),
+        customerName: `${s.customer.firstName} ${s.customer.lastName}`,
+        customerPhone: s.customer.phone,
+        customerHref: `/dashboard/customers/${s.customerId}`,
+        branchName: s.branch.name,
+        staffName: s.photographer?.name ?? null,
+        durationMinutes: s.durationMinutes,
+        room: s.location,
+        notes: s.notes,
+        bookingNumber: s.shootNumber,
+        bookingHref: `/dashboard/photography/${s.id}`,
+        garments: [],
+        rentalWindow: null,
+        totalAmount: null,
+        balanceDue: null,
+        paymentStatus: null,
+      },
+    })),
   ];
 
   return events.sort((a, b) => a.date.localeCompare(b.date));
@@ -142,7 +179,7 @@ async function computeCalendarEvents(
 // The calendar's granularity (a day) means a short cache window is
 // invisible in practice while still saving three queries per view whenever
 // several staff have the same month open.
-const getCachedCalendarEvents = unstable_cache(computeCalendarEvents, ["calendar-events-v2"], {
+const getCachedCalendarEvents = unstable_cache(computeCalendarEvents, ["calendar-events-v3"], {
   revalidate: 60,
   tags: ["calendar"],
 });

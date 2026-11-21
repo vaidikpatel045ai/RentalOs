@@ -32,6 +32,8 @@ export const REMINDER_TYPES = [
   "ALTERATION_DUE",
   "CLEANING_DUE",
   "APPOINTMENT_TODAY",
+  "SHOOT_TODAY",
+  "SHOOT_REQUEST_WAITING",
 ] as const;
 type ReminderType = (typeof REMINDER_TYPES)[number];
 
@@ -40,7 +42,7 @@ interface Reminder {
   type: ReminderType;
   title: string;
   body: string;
-  relatedEntityType: "Booking" | "TailoringJob" | "GarmentCleaningJob" | "Appointment";
+  relatedEntityType: "Booking" | "TailoringJob" | "GarmentCleaningJob" | "Appointment" | "PhotoShoot";
   relatedEntityId: string;
 }
 
@@ -58,7 +60,7 @@ export async function runDailyReminders(now = new Date()): Promise<ReminderRunRe
 
   // Suspended, cancelled or lapsed boutiques get nothing.
   const organizations = (
-    await db.organization.findMany({ select: { id: true, status: true, currentPeriodEnd: true } })
+    await db.organization.findMany({ select: { id: true, status: true, currentPeriodEnd: true, photographyEnabled: true } })
   ).filter(isOrganizationActive);
   const orgIds = organizations.map((o) => o.id);
 
@@ -68,7 +70,7 @@ export async function runDailyReminders(now = new Date()): Promise<ReminderRunRe
   });
   const branches = await db.branch.findMany({
     where: { organizationId: { in: orgIds } },
-    select: { id: true, organizationId: true, currency: true },
+    select: { id: true, organizationId: true, currency: true, timezone: true },
   });
   const branchById = new Map(branches.map((b) => [b.id, b]));
   const branchIds = branches.map((b) => b.id);
@@ -88,6 +90,9 @@ export async function runDailyReminders(now = new Date()): Promise<ReminderRunRe
     for (const userId of new Set(userIds.filter((id): id is string => Boolean(id)))) reminders.push({ userId, ...r });
   };
   const customerName = (c: { firstName: string; lastName: string }) => `${c.firstName} ${c.lastName}`.trim();
+  // Clock times in the branch's own timezone; the server runs on UTC.
+  const clock = (d: Date, branchId: string) =>
+    new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: branchById.get(branchId)?.timezone ?? "Asia/Dubai" }).format(d);
 
   const [overdueReturns, returnsToday, pickupsOwing, alterations, cleanings, appointments] = await Promise.all([
     db.booking.findMany({
@@ -191,11 +196,52 @@ export async function runDailyReminders(now = new Date()): Promise<ReminderRunRe
   for (const a of appointments) {
     add([a.assignedStaffId], {
       type: "APPOINTMENT_TODAY",
-      title: `${enumLabel(a.type)} at ${format(a.scheduledAt, "HH:mm")}`,
+      title: `${enumLabel(a.type)} at ${clock(a.scheduledAt, a.branchId)}`,
       body: `With ${customerName(a.customer)} today.`,
       relatedEntityType: "Appointment",
       relatedEntityId: a.id,
     });
+  }
+
+  // Photography (only boutiques with the module switched on): the photographer's
+  // shoots today, and client requests the boutique hasn't answered yet.
+  const photographyBranchIds = branches
+    .filter((b) => organizations.some((o) => o.id === b.organizationId && o.photographyEnabled))
+    .map((b) => b.id);
+  if (photographyBranchIds.length > 0) {
+    const [shootsToday, requests] = await Promise.all([
+      db.photoShoot.findMany({
+        where: {
+          branchId: { in: photographyBranchIds },
+          scheduledAt: { gte: todayStart, lte: todayEnd },
+          status: "BOOKED",
+          photographerId: { not: null },
+        },
+        include: { customer: { select: { firstName: true, lastName: true } }, service: { select: { name: true } } },
+      }),
+      db.photoShoot.findMany({
+        where: { branchId: { in: photographyBranchIds }, status: "REQUESTED" },
+        include: { customer: { select: { firstName: true, lastName: true } } },
+      }),
+    ]);
+    for (const shoot of shootsToday) {
+      add([shoot.photographerId], {
+        type: "SHOOT_TODAY",
+        title: `Shoot at ${clock(shoot.scheduledAt, shoot.branchId)}: ${customerName(shoot.customer)}`,
+        body: `${shoot.service?.name ?? enumLabel(shoot.type)}${shoot.location ? ` at ${shoot.location}` : ""}.`,
+        relatedEntityType: "PhotoShoot",
+        relatedEntityId: shoot.id,
+      });
+    }
+    for (const shoot of requests) {
+      add(people(shoot.branchId, ["MANAGER", "SALES"]), {
+        type: "SHOOT_REQUEST_WAITING",
+        title: `Photoshoot request waiting: ${customerName(shoot.customer)}`,
+        body: `${shoot.shootNumber}, asked for ${format(shoot.scheduledAt, "d MMM")}. Confirm or decline it.`,
+        relatedEntityType: "PhotoShoot",
+        relatedEntityId: shoot.id,
+      });
+    }
   }
 
   // Drop anything this person was already told about recently.

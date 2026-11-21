@@ -17,6 +17,7 @@ const PORTAL_PREFIX_BY_ROLE: Record<string, string> = {
   TAILOR: "/portal/tailor",
   CLEANER: "/portal/cleaner",
   DELIVERY: "/portal/delivery",
+  PHOTOGRAPHER: "/portal/photographer",
   CUSTOMER: "/portal/customer",
 };
 

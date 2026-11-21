@@ -58,10 +58,15 @@ async function computeProfitLoss(branchIds: string[], startIso: string, endIso: 
   const days = Math.round((end.getTime() - start.getTime()) / 86_400_000);
   const range = { gte: start, lt: end };
 
-  const [payments, expenses, cleaningJobs, repairs] = await Promise.all([
+  const [payments, shootPayments, expenses, cleaningJobs, repairs] = await Promise.all([
     db.payment.findMany({
       where: { status: "COMPLETED", type: { in: INCOME_PAYMENT_TYPES }, paidAt: range, booking: { branchId: { in: branchIds } } },
       select: { amount: true, type: true, paidAt: true, booking: { select: { branchId: true } } },
+    }),
+    // Photography (optional module): money taken for shoots counts as income.
+    db.photoShootPayment.findMany({
+      where: { paidAt: range, shoot: { branchId: { in: branchIds } } },
+      select: { amount: true, paidAt: true, shoot: { select: { branchId: true } } },
     }),
     db.expense.findMany({
       where: { branchId: { in: branchIds }, expenseDate: range },
@@ -88,6 +93,12 @@ async function computeProfitLoss(branchIds: string[], startIso: string, endIso: 
     const amount = Number(p.amount);
     sumInto(incomeByType, p.type, amount);
     sumInto(branchIncome, p.booking.branchId, amount);
+    daily[dayIndex(p.paidAt)].income += amount;
+  }
+  for (const p of shootPayments) {
+    const amount = Number(p.amount);
+    sumInto(incomeByType, "PHOTOGRAPHY", amount);
+    sumInto(branchIncome, p.shoot.branchId, amount);
     daily[dayIndex(p.paidAt)].income += amount;
   }
 
@@ -124,7 +135,7 @@ async function computeProfitLoss(branchIds: string[], startIso: string, endIso: 
 }
 
 // Payments and job completions invalidate "dashboard", expenses "profit-loss".
-const getCachedProfitLoss = unstable_cache(computeProfitLoss, ["profit-loss-v1"], {
+const getCachedProfitLoss = unstable_cache(computeProfitLoss, ["profit-loss-v2"], {
   revalidate: 300,
   tags: ["profit-loss", "dashboard", "reports"],
 });
