@@ -22,6 +22,7 @@ import {
   TrendingUp,
   ScanLine,
   LifeBuoy,
+  Camera,
   type LucideIcon,
 } from "lucide-react";
 import { can, homeRouteForRole, type Resource } from "@/lib/permissions";
@@ -31,6 +32,12 @@ export interface NavItem {
   href: string;
   icon: LucideIcon;
   resource: Resource;
+  /** Optional module the boutique must have switched on for this link to show. */
+  feature?: "photography";
+}
+
+export interface NavFeatures {
+  photography: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -45,6 +52,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Tailoring", href: "/dashboard/tailoring", icon: Scissors, resource: "tailoring" },
   { label: "Cleaning", href: "/dashboard/cleaning", icon: Sparkles, resource: "cleaning" },
   { label: "Delivery & Pickup", href: "/dashboard/delivery", icon: Truck, resource: "delivery" },
+  { label: "Photography", href: "/dashboard/photography", icon: Camera, resource: "photography", feature: "photography" },
   { label: "Transfers", href: "/dashboard/transfers", icon: ArrowLeftRight, resource: "transfers" },
   { label: "Payments", href: "/dashboard/payments", icon: Wallet, resource: "payments" },
   { label: "Expenses", href: "/dashboard/expenses", icon: Receipt, resource: "expenses" },
@@ -58,8 +66,9 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Help & Support", href: "/dashboard/support", icon: LifeBuoy, resource: "support" },
 ];
 
-export function getNavItemsForRole(role: Role): NavItem[] {
+export function getNavItemsForRole(role: Role, features: NavFeatures = { photography: false }): NavItem[] {
   return NAV_ITEMS.filter((item) => {
+    if (item.feature && !features[item.feature]) return false;
     if (item.href === "__home__") return can(role, "dashboard.owner", "view") || true; // dashboard link always shown, resolved below
     // Map generic resource permission check; dashboard.* are per-role, so
     // approximate "can see this resource at all" via any action allowed.

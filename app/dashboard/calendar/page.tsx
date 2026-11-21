@@ -7,6 +7,7 @@ import { getCalendarEvents } from "@/lib/queries/calendar";
 import { CalendarMonth } from "@/components/domain/calendar-month";
 import { Button } from "@/components/ui/button";
 import { FilterBar, type FilterConfig } from "@/components/domain/filter-bar";
+import { isPhotographyEnabled } from "@/lib/photography";
 
 export default async function CalendarPage({
   searchParams,
@@ -25,7 +26,10 @@ export default async function CalendarPage({
   // Only honor a ?branchId= that belongs to this organization.
   const ownerBranchId = branchIdParam && branches.some((b) => b.id === branchIdParam) ? branchIdParam : undefined;
   const branchId = isOwner ? ownerBranchId : (session?.user.branchId ?? undefined);
-  const events = await getCalendarEvents(rangeStart, rangeEnd, branchId, organizationId);
+  const [events, photography] = await Promise.all([
+    getCalendarEvents(rangeStart, rangeEnd, branchId, organizationId),
+    isPhotographyEnabled(organizationId),
+  ]);
 
   const filters: FilterConfig[] = isOwner
     ? [{ key: "branchId", label: "Branch", options: branches.map((b) => ({ value: b.id, label: b.name })) }]
@@ -72,6 +76,7 @@ export default async function CalendarPage({
         <Legend color="bg-gold" label="Fitting" />
         <Legend color="bg-risk-safe" label="Pickup" />
         <Legend color="bg-risk-tight" label="Return" />
+        {photography && <Legend color="bg-purple-500" label="Photoshoot" />}
       </div>
     </div>
   );

@@ -5,13 +5,19 @@ import { can } from "@/lib/permissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StaffForm } from "@/components/domain/staff-form";
 import { createStaff } from "@/lib/actions/staff-actions";
+import { assignableRoles } from "@/lib/staff-access";
+import { isPhotographyEnabled } from "@/lib/photography";
 
 export default async function NewStaffPage() {
   const session = await auth();
   if (!session?.user || !can(session.user.role, "staff", "create")) {
     redirect("/dashboard/staff");
   }
-  const branches = await getCachedBranches(session!.user.organizationId!);
+  const [branches, photography] = await Promise.all([
+    getCachedBranches(session!.user.organizationId!),
+    isPhotographyEnabled(session!.user.organizationId),
+  ]);
+  const roles = assignableRoles(session!.user.role, { photography });
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -24,7 +30,7 @@ export default async function NewStaffPage() {
           <CardTitle className="font-heading text-base">Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <StaffForm branches={branches} action={createStaff} mode="create" />
+          <StaffForm branches={branches} action={createStaff} mode="create" roles={roles} />
         </CardContent>
       </Card>
     </div>

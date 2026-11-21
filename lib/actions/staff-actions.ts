@@ -10,6 +10,7 @@ import { createStaffSchema, updateStaffSchema } from "@/lib/validations/staff";
 import { assignableRoles, findManageableStaff } from "@/lib/staff-access";
 import { getCachedBranches } from "@/lib/queries/branches";
 import type { ActionState } from "@/lib/actions/customer-actions";
+import { isPhotographyEnabled } from "@/lib/photography";
 
 export async function createStaff(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const session = await auth();
@@ -24,7 +25,8 @@ export async function createStaff(_prev: ActionState, formData: FormData): Promi
   }
   const data = parsed.data;
   const email = data.email.toLowerCase().trim();
-  if (!assignableRoles(session.user.role).includes(data.role)) {
+  const photography = await isPhotographyEnabled(session.user.organizationId);
+  if (!assignableRoles(session.user.role, { photography }).includes(data.role)) {
     return { error: "Only the owner can make someone a manager or an owner." };
   }
   if (data.branchId && !(await getCachedBranches(session.user.organizationId!)).some((b) => b.id === data.branchId)) {
@@ -94,7 +96,8 @@ export async function updateStaff(userId: string, _prev: ActionState, formData: 
   // Same boutique only, and below the owner never an owner's account.
   const target = await findManageableStaff(session.user, userId);
   if (!target) return { error: "Staff member not found." };
-  if (data.role !== target.role && !assignableRoles(session.user.role).includes(data.role)) {
+  const photography = await isPhotographyEnabled(session.user.organizationId);
+  if (data.role !== target.role && !assignableRoles(session.user.role, { photography }).includes(data.role)) {
     return { error: "Only the owner can make someone a manager or an owner." };
   }
   if (data.branchId && !(await getCachedBranches(session.user.organizationId!)).some((b) => b.id === data.branchId)) {

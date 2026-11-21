@@ -21,8 +21,10 @@ export async function findManageableStaff(actor: Actor, targetId: string) {
   return target;
 }
 
-/** Roles `actor` may give someone: only an owner can make owners or managers. */
-export function assignableRoles(actorRole: Role): (typeof STAFF_ROLES)[number][] {
-  if (actorRole === "OWNER") return [...STAFF_ROLES];
-  return STAFF_ROLES.filter((r) => r !== "OWNER" && r !== "MANAGER");
+/** Roles `actor` may give someone: only an owner can make owners or managers,
+ * and Photographer only exists when the boutique has photography switched on. */
+export function assignableRoles(actorRole: Role, options: { photography?: boolean } = {}): (typeof STAFF_ROLES)[number][] {
+  const roles = STAFF_ROLES.filter((r) => options.photography || r !== "PHOTOGRAPHER");
+  if (actorRole === "OWNER") return roles;
+  return roles.filter((r) => r !== "OWNER" && r !== "MANAGER");
 }

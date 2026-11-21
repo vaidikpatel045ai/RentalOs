@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { OrganizationBillingPanel } from "@/components/domain/organization-billing-panel";
+import { OrganizationServicesPanel } from "@/components/domain/organization-services-panel";
 import { enumLabel } from "@/lib/format-enum";
 import { ResetPasswordDialog } from "@/components/domain/reset-password-dialog";
 import { resetOwnerPassword } from "@/lib/actions/password-actions";
@@ -52,6 +53,15 @@ export default async function OrganizationDetailPage({ params }: { params: Promi
         </Card>
 
         <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-heading text-base">Optional services</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <OrganizationServicesPanel organizationId={organization.id} photographyEnabled={organization.photographyEnabled} />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="font-heading text-base">Branches ({organization.branches.length})</CardTitle>

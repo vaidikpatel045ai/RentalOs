@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { auth } from "@/lib/auth";
@@ -131,4 +131,15 @@ export async function markOrganizationPaid(organizationId: string) {
 
   revalidatePath(`/admin/organizations/${organizationId}`);
   revalidatePath("/admin");
+}
+
+/** Switches the optional photography module on or off for one boutique.
+ * Turning it off hides it everywhere but keeps every shoot and payment, so
+ * switching it back on restores them. */
+export async function setOrganizationPhotography(organizationId: string, enabled: boolean) {
+  await requirePlatformAdmin();
+  await db.organization.update({ where: { id: organizationId }, data: { photographyEnabled: enabled } });
+  updateTag("calendar");
+  revalidatePath(`/admin/organizations/${organizationId}`);
+  revalidatePath("/dashboard", "layout");
 }

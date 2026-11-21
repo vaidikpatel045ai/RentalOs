@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const STAFF_ROLES = ["OWNER", "MANAGER", "SALES", "STYLIST", "TAILOR", "CLEANER", "DELIVERY"] as const;
+export const STAFF_ROLES = ["OWNER", "MANAGER", "SALES", "STYLIST", "TAILOR", "CLEANER", "DELIVERY", "PHOTOGRAPHER"] as const;
 
 const phoneSchema = z
   .string()

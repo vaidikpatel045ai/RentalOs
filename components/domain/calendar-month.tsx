@@ -25,6 +25,7 @@ const TYPE_DOT: Record<CalendarEvent["type"], string> = {
   trial: "bg-gold",
   pickup: "bg-risk-safe",
   return: "bg-risk-tight",
+  shoot: "bg-purple-500",
 };
 
 // What the pop-up is showing: a whole day, or one event (optionally opened
@@ -183,9 +184,9 @@ function EventDetails({ event, onBack }: { event: CalendarEvent; onBack?: () => 
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
         <Detail label="Type" value={d.subtype} />
         <Detail label="Branch" value={d.branchName} />
-        <Detail label="Staff" value={d.staffName} />
-        <Detail label="Room" value={d.room} />
-        <Detail label="Booking" value={d.bookingNumber} />
+        <Detail label={d.kind === "Photoshoot" ? "Photographer" : "Staff"} value={d.staffName} />
+        <Detail label={d.kind === "Photoshoot" ? "Location" : "Room"} value={d.room} />
+        <Detail label={d.kind === "Photoshoot" ? "Shoot" : "Booking"} value={d.bookingNumber} />
         <Detail label="Payment" value={d.paymentStatus} />
         <Detail label="Total" value={d.totalAmount} />
         <Detail label="Balance due" value={d.balanceDue} />

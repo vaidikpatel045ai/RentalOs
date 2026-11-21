@@ -7,6 +7,7 @@ import { StaffForm } from "@/components/domain/staff-form";
 import { updateStaff } from "@/lib/actions/staff-actions";
 import type { STAFF_ROLES } from "@/lib/validations/staff";
 import { assignableRoles, findManageableStaff } from "@/lib/staff-access";
+import { isPhotographyEnabled } from "@/lib/photography";
 
 export default async function EditStaffPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -22,7 +23,7 @@ export default async function EditStaffPage({ params }: { params: Promise<{ id: 
   ]);
   if (!user) notFound();
   const role = user.role as (typeof STAFF_ROLES)[number];
-  const allowed = assignableRoles(session!.user.role);
+  const allowed = assignableRoles(session!.user.role, { photography: await isPhotographyEnabled(session!.user.organizationId) });
   const roles = allowed.includes(role) ? allowed : [role, ...allowed];
 
   return (

@@ -4,6 +4,7 @@ import type {
   BookingStatus,
   GarmentStatus,
   PaymentStatus,
+  PhotoShootStatus,
 } from "@prisma/client";
 
 type Tone = "neutral" | "info" | "success" | "warning" | "danger" | "gold";
@@ -119,5 +120,19 @@ const RISK_META: Record<AvailabilityRisk, { label: string; tone: Tone }> = {
 
 export function RiskBadge({ risk, className }: { risk: AvailabilityRisk; className?: string }) {
   const meta = RISK_META[risk];
+  return <BasePill tone={meta.tone} label={meta.label} className={className} />;
+}
+
+const PHOTO_SHOOT_STATUS_META: Record<PhotoShootStatus, { label: string; tone: Tone }> = {
+  REQUESTED: { label: "Requested", tone: "warning" },
+  BOOKED: { label: "Booked", tone: "info" },
+  SHOT: { label: "Shot", tone: "gold" },
+  EDITING: { label: "Editing", tone: "gold" },
+  DELIVERED: { label: "Delivered", tone: "success" },
+  CANCELLED: { label: "Cancelled", tone: "neutral" },
+};
+
+export function PhotoShootStatusBadge({ status, className }: { status: PhotoShootStatus; className?: string }) {
+  const meta = PHOTO_SHOOT_STATUS_META[status];
   return <BasePill tone={meta.tone} label={meta.label} className={className} />;
 }

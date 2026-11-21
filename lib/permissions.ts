@@ -35,7 +35,8 @@ export type Resource =
   | "transfers"
   | "expenses"
   | "profitLoss"
-  | "support";
+  | "support"
+  | "photography";
 
 export type Action = "view" | "create" | "update" | "delete" | "approve";
 
@@ -172,6 +173,15 @@ const PERMISSION_MAP: Record<Resource, Partial<Record<Role, Action[]>>> = {
     OWNER: ["view", "create"],
     MANAGER: ["view", "create"],
   },
+  // Optional module: every action also checks the boutique has it switched on
+  // (lib/photography.ts). Photographers only update shoots assigned to them.
+  photography: {
+    OWNER: ["view", "create", "update", "delete"],
+    MANAGER: ["view", "create", "update", "delete"],
+    SALES: ["view", "create", "update"],
+    STYLIST: ["view"],
+    PHOTOGRAPHER: ["view", "update"],
+  },
 };
 
 export function can(role: Role, resource: Resource, action: Action): boolean {
@@ -224,6 +234,8 @@ export function homeRouteForRole(role: Role): string {
       return "/portal/cleaner";
     case "DELIVERY":
       return "/portal/delivery";
+    case "PHOTOGRAPHER":
+      return "/portal/photographer";
     case "CUSTOMER":
       return "/portal/customer";
     default:

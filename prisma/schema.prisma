@@ -25,6 +25,7 @@ enum Role {
   TAILOR
   CLEANER
   DELIVERY
+  PHOTOGRAPHER
   CUSTOMER
 }
 
@@ -318,16 +319,18 @@ model Plan {
 }
 
 model Organization {
-  id               String             @id @default(cuid())
-  name             String
-  status           OrganizationStatus @default(TRIAL)
-  planId           String?
-  plan             Plan?              @relation(fields: [planId], references: [id])
+  id                 String             @id @default(cuid())
+  name               String
+  status             OrganizationStatus @default(TRIAL)
+  planId             String?
+  plan               Plan?              @relation(fields: [planId], references: [id])
   /// MONTHLY: access cutoff if not renewed. ONE_TIME/TRIAL: null (no cutoff).
-  currentPeriodEnd DateTime?
+  currentPeriodEnd   DateTime?
   /// Free-form notes for the platform admin, e.g. "paid via bank transfer 3 Oct".
-  billingNotes     String?
-  createdAt        DateTime           @default(now())
+  billingNotes       String?
+  /// Optional photography module (pre-wedding, bridal shoots...). Off until the platform admin turns it on.
+  photographyEnabled Boolean            @default(false)
+  createdAt          DateTime           @default(now())
 
   branches       Branch[]
   users          User[]
@@ -373,6 +376,9 @@ model Branch {
   transfersTo      InventoryTransfer[] @relation("TransferToBranch")
   messageTemplates MessageTemplate[]
   expenses         Expense[]
+
+  photoServices PhotoService[]
+  photoShoots   PhotoShoot[]
 
   @@unique([organizationId, code])
   @@map("branches")
@@ -460,6 +466,9 @@ model User {
   expensesRecorded       Expense[]             @relation("ExpenseRecordedBy")
   invoicesCreated        Invoice[]             @relation("InvoiceCreatedBy")
 
+  photoShoots        PhotoShoot[]        @relation("PhotoShootPhotographer")
+  photoShootPayments PhotoShootPayment[] @relation("PhotoShootPaymentReceivedBy")
+
   @@index([role])
   @@index([branchId])
   @@map("users")
@@ -520,6 +529,8 @@ model Customer {
   documents       Document[]
   messages        Message[]
   tailoringJobs   TailoringJob[]
+
+  photoShoots PhotoShoot[]
 
   @@index([branchId])
   @@index([phone])
@@ -948,6 +959,8 @@ model Booking {
   cleaningJobs     GarmentCleaningJob[]
   invoices         Invoice[]
   conditionReports GarmentConditionReport[]
+
+  photoShoots PhotoShoot[]
 
   @@index([branchId])
   @@index([customerId])
@@ -1479,4 +1492,114 @@ model SupportMessage {
 
   @@index([ticketId, createdAt])
   @@map("support_messages")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// PHOTOGRAPHY (optional module, gated by Organization.photographyEnabled)
+// ─────────────────────────────────────────────────────────────────────────
+
+enum PhotoShootType {
+  PRE_WEDDING
+  BRIDAL
+  ENGAGEMENT
+  WEDDING_DAY
+  MATERNITY
+  FAMILY
+  EVENT
+  OTHER
+}
+
+enum PhotoShootStatus {
+  REQUESTED // asked for by the client in their portal, not yet confirmed
+  BOOKED
+  SHOT
+  EDITING
+  DELIVERED
+  CANCELLED
+}
+
+/// A shoot the boutique offers, with its standard price, e.g. "Pre-wedding, 3 hours, 60 edited photos".
+model PhotoService {
+  id              String         @id @default(cuid())
+  branchId        String
+  branch          Branch         @relation(fields: [branchId], references: [id])
+  name            String
+  type            PhotoShootType
+  description     String?
+  /// What the client receives, e.g. "60 edited photos + 1-minute film".
+  deliverables    String?
+  price           Decimal        @db.Decimal(12, 2)
+  durationMinutes Int            @default(120)
+  isActive        Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  shoots PhotoShoot[]
+
+  @@index([branchId])
+  @@map("photo_services")
+}
+
+model PhotoShoot {
+  id          String        @id @default(cuid())
+  shootNumber String        @unique // e.g. "PS-2026-0001"
+  branchId    String
+  branch      Branch        @relation(fields: [branchId], references: [id])
+  customerId  String
+  customer    Customer      @relation(fields: [customerId], references: [id])
+  serviceId   String?
+  service     PhotoService? @relation(fields: [serviceId], references: [id])
+  /// Optional link to the rental booking this shoot goes with.
+  bookingId   String?
+  booking     Booking?      @relation(fields: [bookingId], references: [id])
+
+  photographerId String?
+  photographer   User?   @relation("PhotoShootPhotographer", fields: [photographerId], references: [id])
+
+  type            PhotoShootType
+  status          PhotoShootStatus @default(BOOKED)
+  scheduledAt     DateTime
+  durationMinutes Int              @default(120)
+  location        String?
+
+  price      Decimal @db.Decimal(12, 2)
+  discount   Decimal @default(0) @db.Decimal(12, 2)
+  paidAmount Decimal @default(0) @db.Decimal(12, 2)
+
+  /// Boutique notes for the shoot (client wishes, outfits, props).
+  notes             String?
+  /// The photographer's own notes, e.g. editing progress.
+  photographerNotes String?
+  /// Where the client collects the finished photos (Drive, Pixieset...).
+  galleryUrl        String?
+  deliveredAt       DateTime?
+
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  payments PhotoShootPayment[]
+
+  @@index([branchId, scheduledAt])
+  @@index([photographerId])
+  @@index([customerId])
+  @@map("photo_shoots")
+}
+
+model PhotoShootPayment {
+  id        String            @id @default(cuid())
+  shootId   String
+  shoot     PhotoShoot        @relation(fields: [shootId], references: [id], onDelete: Cascade)
+  amount    Decimal           @db.Decimal(12, 2)
+  method    TransactionMethod
+  reference String?
+
+  receivedByUserId String?
+  receivedBy       User?   @relation("PhotoShootPaymentReceivedBy", fields: [receivedByUserId], references: [id])
+
+  paidAt    DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([shootId])
+  @@map("photo_shoot_payments")
 }

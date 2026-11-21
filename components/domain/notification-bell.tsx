@@ -9,7 +9,16 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { markNotificationRead, markAllNotificationsRead } from "@/lib/actions/notification-actions";
 import type { Notification } from "@prisma/client";
 
-export function NotificationBell({ unreadCount, notifications }: { unreadCount: number; notifications: Notification[] }) {
+export function NotificationBell({
+  unreadCount,
+  notifications,
+  portalHome,
+}: {
+  unreadCount: number;
+  notifications: Notification[];
+  /** In a portal, record links go to the portal's own page instead of the back office. */
+  portalHome?: string;
+}) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -21,7 +30,9 @@ export function NotificationBell({ unreadCount, notifications }: { unreadCount: 
         ? `/dashboard/support/${n.relatedEntityId}`
         : n.relatedEntityType === "Booking"
           ? `/dashboard/bookings/${n.relatedEntityId}`
-          : null;
+          : n.relatedEntityType === "PhotoShoot"
+            ? (portalHome ?? `/dashboard/photography/${n.relatedEntityId}`)
+            : null;
     if (href) router.push(href);
     if (n.isRead) return;
     startTransition(async () => {

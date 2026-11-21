@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { differenceInCalendarDays } from "date-fns";
-import { CalendarClock, Download, FileText, Phone, Ruler, Shirt } from "lucide-react";
+import { CalendarClock, Camera, Download, ExternalLink, FileText, Phone, Ruler, Shirt } from "lucide-react";
 import type { BookingStatus } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { InvoicePreviewDialog } from "@/components/domain/invoice-preview-dialog";
@@ -12,6 +12,9 @@ import { PortalGreeting } from "@/components/domain/portal/portal-job-board";
 import { formatMoney } from "@/lib/currency";
 import { MEASUREMENT_FIELDS, MEASUREMENT_LABELS } from "@/lib/measurements";
 import { enumLabel } from "@/lib/format-enum";
+import { isPhotographyEnabled } from "@/lib/photography";
+import { PhotoShootStatusBadge } from "@/components/domain/status-badge";
+import { PhotoshootRequestDialog } from "@/components/domain/portal/photoshoot-request-dialog";
 
 /** Formats in the boutique's own timezone, so a 3pm fitting reads 3pm wherever the server runs. */
 function formatter(timezone: string, options: Intl.DateTimeFormatOptions) {
@@ -36,7 +39,7 @@ export default async function CustomerPortalPage() {
   const customer = await db.customer.findUnique({
     where: { userId: session?.user.id },
     include: {
-      branch: { select: { name: true, phone: true, timezone: true } },
+      branch: { select: { name: true, phone: true, timezone: true, currency: true } },
       bookings: {
         include: {
           items: {
@@ -81,8 +84,23 @@ export default async function CustomerPortalPage() {
         ? "Your bookings, fittings and measurements, all in one place."
         : "Your bookings will appear here once the boutique confirms them.";
 
+  // Optional module: only when the boutique has photography switched on.
+  const photography = await isPhotographyEnabled(session?.user.organizationId);
+  const [shoots, photoServices] = photography
+    ? await Promise.all([
+        db.photoShoot.findMany({
+          where: { customerId: customer.id, status: { not: "CANCELLED" } },
+          include: { service: { select: { name: true } } },
+          orderBy: { scheduledAt: "desc" },
+          take: 10,
+        }),
+        db.photoService.findMany({ where: { branchId: customer.branchId, isActive: true }, orderBy: { price: "asc" } }),
+      ])
+    : [[], []];
+  const showPhotography = photography && (shoots.length > 0 || photoServices.length > 0);
+
   const measurement = customer.measurements[0];
-  const hasSidebar = customer.appointments.length > 0 || measurement || customer.documents.length > 0;
+  const hasSidebar = customer.appointments.length > 0 || measurement || customer.documents.length > 0 || showPhotography;
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -115,6 +133,49 @@ export default async function CustomerPortalPage() {
                       </div>
                     </div>
                   ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {showPhotography && (
+              <Card className="gap-4">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 font-heading text-base">
+                    <Camera className="size-4 text-muted-foreground" />
+                    Photoshoots
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {shoots.map((s) => (
+                    <div key={s.id} className="space-y-1 rounded-lg border border-border p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="min-w-0 text-sm font-medium">{s.service?.name ?? enumLabel(s.type)}</p>
+                        <PhotoShootStatusBadge status={s.status} />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {s.status === "REQUESTED" ? "You asked for " : ""}
+                        {dayShort(s.scheduledAt)}, {time(s.scheduledAt)}
+                        {s.location ? ` · ${s.location}` : ""}
+                      </p>
+                      {s.status === "DELIVERED" && s.galleryUrl && (
+                        <a href={s.galleryUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-medium text-gold hover:underline">
+                          View your photos <ExternalLink className="size-3.5" />
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                  {photoServices.length > 0 && (
+                    <PhotoshootRequestDialog
+                      services={photoServices.map((p) => ({
+                        id: p.id,
+                        name: p.name,
+                        price: formatMoney(p.price, customer.branch.currency),
+                        durationMinutes: p.durationMinutes,
+                        deliverables: p.deliverables,
+                        description: p.description,
+                      }))}
+                    />
+                  )}
                 </CardContent>
               </Card>
             )}

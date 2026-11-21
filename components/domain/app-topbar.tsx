@@ -20,7 +20,7 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { CommandSearch } from "@/components/domain/command-search";
 import { NotificationBell } from "@/components/domain/notification-bell";
 import { PageTour } from "@/components/tour/page-tour";
-import { getNavItemsForRole } from "@/lib/nav-config";
+import { getNavItemsForRole, type NavFeatures } from "@/lib/nav-config";
 import { cn } from "@/lib/utils";
 import type { Notification } from "@prisma/client";
 
@@ -40,6 +40,7 @@ export function AppTopbar({
   branchName,
   unreadCount,
   notifications,
+  features,
 }: {
   name: string;
   email: string;
@@ -47,10 +48,11 @@ export function AppTopbar({
   branchName?: string | null;
   unreadCount: number;
   notifications: Notification[];
+  features: NavFeatures;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
-  const items = getNavItemsForRole(role);
+  const items = getNavItemsForRole(role, features);
 
   return (
     <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-4 border-b border-border bg-background px-4 md:px-6">
